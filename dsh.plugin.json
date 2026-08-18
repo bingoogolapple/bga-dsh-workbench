@@ -1,0 +1,12 @@
+{
+  "name": "bga-dsh-workbench",
+  "description": "Personal Harness workbench: hero banner, completed-turn confetti, and a built-in task board",
+  "version": "0.1.0",
+  "entry": {
+    "name": "bga-dsh-workbench",
+    "inject": ["tools"]
+  },
+  "client": {
+    "platform": "web"
+  }
+}

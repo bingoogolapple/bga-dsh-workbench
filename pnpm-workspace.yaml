@@ -1,0 +1,6 @@
+# pnpm 工作区配置。
+#
+# 本仓库是独立插件项目（非 monorepo），此文件用于声明 pnpm 的构建脚本
+# 允许执行项：esbuild 需要运行其安装脚本（例如下载平台二进制），故放行。
+allowBuilds:
+  esbuild: true

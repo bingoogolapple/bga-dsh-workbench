@@ -1,0 +1,301 @@
+ .bga-kb-cfg {
+   border: 1px solid var(--dsw-alias-border-l2);
+   background: var(--dsw-alias-bg-layer-3);
+   border-radius: 12px;
+   list-style: none;
+   transition: border-color 0.16s, background 0.16s;
+ }
+ 
+ .bga-kb-cfg:hover {
+   border-color: var(--dsw-alias-label-dimmed);
+ }
+ 
+ .bga-kb-cfg--open {
+   background: var(--dsw-alias-bg-layer-2);
+   border-color: var(--dsw-alias-label-dimmed);
+ }
+ 
+ .bga-kb-cfg-header {
+   appearance: none;
+   width: 100%;
+   font: inherit;
+   color: inherit;
+   text-align: left;
+   cursor: pointer;
+   background: transparent;
+   border: 0;
+   border-radius: 12px;
+   align-items: center;
+   gap: 12px;
+   padding: 14px 16px;
+   display: flex;
+ }
+ 
+ .bga-kb-cfg-header:focus-visible {
+   outline: 2px solid var(--dsw-alias-brand-primary);
+   outline-offset: -2px;
+ }
+ 
+ .bga-kb-cfg-head-text {
+   flex-direction: column;
+   flex: 1;
+   gap: 4px;
+   min-width: 0;
+   display: flex;
+ }
+ 
+ .bga-kb-cfg-name {
+   color: var(--dsw-alias-label-primary);
+   font-size: 15px;
+   font-weight: 600;
+   line-height: 1.4;
+ }
+ 
+ .bga-kb-cfg-desc {
+   color: var(--dsw-alias-label-tertiary);
+   font-size: 13px;
+   line-height: 1.5;
+ }
+ 
+ .bga-kb-cfg-pending {
+   white-space: nowrap;
+   background: var(--dsw-alias-bg-module-platform);
+   color: var(--dsw-alias-label-secondary);
+   border-radius: 999px;
+   flex: none;
+   padding: 1px 8px;
+   font-size: 11px;
+   font-weight: 500;
+   line-height: 17px;
+ }
+ 
+ .bga-kb-cfg-chevron {
+   color: var(--dsw-alias-label-tertiary);
+   flex: none;
+   transition: transform 0.16s;
+ }
+ 
+ .bga-kb-cfg-chevron--open {
+   transform: rotate(180deg);
+ }
+ 
+ .bga-kb-cfg-body {
+   border-top: 1px solid var(--dsw-alias-border-l2);
+   margin: 0 16px;
+   padding-bottom: 8px;
+ }
+ 
+ .bga-kb-cfg-ro {
+   color: var(--dsw-alias-label-tertiary);
+   margin: 12px 0 0;
+   font-size: 12px;
+   line-height: 1.5;
+ }
+ 
+ .bga-kb-cfg-hidden {
+   color: var(--dsw-alias-state-warn-primary);
+   margin: 12px 0 0;
+   font-size: 12px;
+   line-height: 1.5;
+ }
+ 
+ .bga-kb-cfg-foot {
+   border-top: 1px solid var(--dsw-alias-border-l2);
+   justify-content: flex-end;
+   align-items: center;
+   gap: 8px;
+   padding: 12px 0 4px;
+   display: flex;
+ }
+ 
+ .bga-kb-cfg-failed {
+   min-width: 0;
+   color: var(--dsw-alias-label-error);
+   flex: 1;
+   margin: 0;
+   font-size: 12px;
+   line-height: 1.5;
+   text-overflow: ellipsis;
+   overflow: hidden;
+   white-space: nowrap;
+ }
+ 
+ .bga-kb-cfg-discard,
+ .bga-kb-cfg-save {
+   appearance: none;
+   font: inherit;
+   cursor: pointer;
+   border: 1px solid transparent;
+   border-radius: 8px;
+   padding: 5px 14px;
+   font-size: 13px;
+   line-height: 1.5;
+ }
+ 
+ .bga-kb-cfg-discard {
+   border-color: var(--dsw-alias-border-l2);
+   color: var(--dsw-alias-label-secondary);
+   background: transparent;
+ }
+ 
+ .bga-kb-cfg-discard:hover:not(:disabled) {
+   color: var(--dsw-alias-label-primary);
+   border-color: var(--dsw-alias-label-dimmed);
+ }
+ 
+ .bga-kb-cfg-save {
+   background: var(--dsw-alias-label-primary);
+   color: var(--dsw-alias-bg-layer-3);
+ }
+ 
+ .bga-kb-cfg-discard:disabled,
+ .bga-kb-cfg-save:disabled {
+   opacity: 0.4;
+   cursor: default;
+ }
+ 
+ .bga-kb-cfg-discard:focus-visible,
+ .bga-kb-cfg-save:focus-visible {
+   outline: 2px solid var(--dsw-alias-brand-primary);
+   outline-offset: 1px;
+ }
+ 
+ .bga-kb-cfg-field {
+   flex-direction: column;
+   gap: 6px;
+   padding: 12px 0;
+   display: flex;
+ }
+ 
+ .bga-kb-cfg-field + .bga-kb-cfg-field {
+   border-top: 1px solid var(--dsw-alias-border-l2);
+ }
+ 
+ .bga-kb-cfg-head {
+   align-items: center;
+   gap: 8px;
+   display: flex;
+ }
+ 
+ .bga-kb-cfg-label {
+   min-width: 0;
+   color: var(--dsw-alias-label-primary);
+   flex: 1;
+   font-size: 13px;
+   font-weight: 500;
+   line-height: 1.5;
+ }
+ 
+ .bga-kb-cfg-badges {
+   align-items: center;
+   gap: 8px;
+   display: inline-flex;
+ }
+ 
+ .bga-kb-cfg-badge {
+   white-space: nowrap;
+   background: var(--dsw-alias-bg-module-platform);
+   color: var(--dsw-alias-label-secondary);
+   border-radius: 999px;
+   padding: 1px 8px;
+   font-size: 11px;
+   font-weight: 500;
+   line-height: 17px;
+ }
+ 
+ .bga-kb-cfg-reset {
+   font: inherit;
+   color: var(--dsw-alias-label-secondary);
+   cursor: pointer;
+   background: transparent;
+   border: none;
+   padding: 0;
+   font-size: 12px;
+   line-height: 1.5;
+ }
+ 
+ .bga-kb-cfg-reset:hover:not(:disabled) {
+   color: var(--dsw-alias-label-primary);
+ }
+ 
+ .bga-kb-cfg-reset:disabled {
+   cursor: default;
+ }
+ 
+ .bga-kb-cfg-reset:focus-visible {
+   outline: 2px solid var(--dsw-alias-brand-primary);
+   outline-offset: 2px;
+ }
+ 
+ .bga-kb-cfg-reset:focus-visible {
+   outline: 2px solid var(--dsw-alias-brand-primary);
+   outline-offset: 2px;
+ }
+ 
+ .bga-kb-cfg-input,
+ .bga-kb-cfg-select {
+   border: 1px solid var(--dsw-alias-border-l2);
+   background: var(--dsw-alias-bg-layer-3);
+   height: 34px;
+   font: inherit;
+   color: var(--dsw-alias-label-primary);
+   border-radius: 8px;
+   padding: 0 12px;
+   font-size: 13px;
+   line-height: 1.5;
+ }
+ 
+ .bga-kb-cfg-input:focus-visible,
+ .bga-kb-cfg-select:focus-visible {
+   border-color: var(--dsw-alias-brand-primary);
+   outline: none;
+ }
+ 
+ .bga-kb-cfg-input:disabled,
+ .bga-kb-cfg-select:disabled {
+   color: var(--dsw-alias-label-tertiary);
+   cursor: default;
+ }
+ 
+ .bga-kb-cfg-input--err {
+   border: 1px solid var(--dsw-alias-label-error);
+   background: var(--dsw-alias-bg-layer-3);
+   height: 34px;
+   font: inherit;
+   color: var(--dsw-alias-label-primary);
+   border-radius: 8px;
+   padding: 0 12px;
+   font-size: 13px;
+   line-height: 1.5;
+ }
+ 
+ .bga-kb-cfg-input--err:focus-visible {
+   outline: 2px solid var(--dsw-alias-label-error);
+   outline-offset: 1px;
+   border-color: var(--dsw-alias-label-error);
+ }
+ 
+ .bga-kb-cfg-invalid {
+   color: var(--dsw-alias-label-error);
+   margin: 0;
+   font-size: 12px;
+   line-height: 1.5;
+ }
+ 
+ .bga-kb-cfg-hint {
+   color: var(--dsw-alias-label-tertiary);
+   margin: 0;
+   font-size: 12px;
+   line-height: 1.5;
+ }
+ 
+ @media (prefers-reduced-motion: reduce) {
+   .bga-kb-cfg,
+   .bga-kb-cfg-header,
+   .bga-kb-cfg-chevron,
+   .bga-kb-cfg-chevron--open,
+   .bga-kb-cfg-discard,
+   .bga-kb-cfg-save {
+     transition: none;
+   }
+ }

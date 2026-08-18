@@ -1,0 +1,9 @@
+# Cordis 组合补丁（部署时将此插件插入宿主组合）。
+#
+# 该补丁文件由 DSH 在启动时应用：向宿主 cordis 组合中插入一行
+# bga-dsh-workbench 插件（与 package.json 的 dsh.bundle.patch 关联）。
+- insert:
+    # 插件行 ID（同时也是包名）
+    - id: bga-dsh-workbench
+      # 插件显示名
+      name: bga-dsh-workbench
