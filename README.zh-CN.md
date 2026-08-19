@@ -4,6 +4,8 @@
 [![npm](https://img.shields.io/npm/v/bga-dsh-workbench.svg)](https://www.npmjs.com/package/bga-dsh-workbench)
 [![npm](https://img.shields.io/npm/dm/bga-dsh-workbench.svg)](https://www.npmjs.com/package/bga-dsh-workbench)
 
+**🌐 [English Documentation](README.md)**
+
 一个为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 定制的个人工作台插件：在 hero 空态页顶部展示个性化横幅与头像、完成回合时撒彩带庆祝，并内置一个可驱动 agent 会话执行的「任务看板」。
 
 ![主界面截图](images/bga-dsh-workbench-main.png)
