@@ -59,10 +59,7 @@ This plugin is distributed as a DSH plugin package. In an environment where Deep
 # Install from npm (after publishing)
 dsh plugin --profile <your profile name> add bga-dsh-workbench
 
-# Or install from a Git repository
-dsh plugin --profile <your profile name> add github:bingoogolapple/bga-dsh-workbench
-
-# Or install from a local path (for development/debugging)
+# Install from a local path (for development/debugging)
 dsh plugin --profile <your profile name> add /path/to/bga-dsh-workbench
 ```
 
@@ -140,7 +137,7 @@ After editing the source, run `pnpm build` again and restart the DSH service for
    git push origin v0.0.1
    ```
 
-3. Users can then install via `dsh plugin --profile <profile> add bga-dsh-workbench` (npm) or `add github:bingoogolapple/bga-dsh-workbench` (Git).
+3. Users can then install via `dsh plugin --profile <profile> add bga-dsh-workbench`.
 
 ## Support the Author
 

@@ -59,10 +59,7 @@
 # 从 npm 安装（发布后）
 dsh plugin --profile <你的 profile 名> add bga-dsh-workbench
 
-# 或从 Git 仓库安装
-dsh plugin --profile <你的 profile 名> add github:bingoogolapple/bga-dsh-workbench
-
-# 或本地路径安装（开发调试）
+# 本地路径安装（开发调试）
 dsh plugin --profile <你的 profile 名> add /path/to/bga-dsh-workbench
 ```
 
@@ -152,12 +149,6 @@ dsh plugin --profile <你的 profile 名> add .
 
      ```bash
      dsh plugin --profile web add bga-dsh-workbench
-     ```
-
-   - 从 Git 仓库（未发布 npm 时）：
-
-     ```bash
-     dsh plugin --profile <profile> add github:bingoogolapple/bga-dsh-workbench
      ```
 
 ## 打赏支持作者
