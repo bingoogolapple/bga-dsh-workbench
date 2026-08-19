@@ -8,8 +8,8 @@
 
 A personal workbench plugin customized for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): it shows a personalized banner with an avatar at the top of the hero empty state, plays a confetti animation when a chat turn completes, and ships a built-in task board that can drive agent sessions to execute tasks.
 
-![Main screen](images/bga-dsh-workbench-main.png)
-![Settings page](images/bga-dsh-workbench-settings.png)
+![Main screen](./images/bga-dsh-workbench-main.png)
+![Settings page](./images/bga-dsh-workbench-settings.png)
 
 ## Features
 
