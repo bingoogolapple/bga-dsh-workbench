@@ -8,11 +8,14 @@
  * 最后运行 tsc 生成 .d.ts 类型声明（tsconfig.json 配置 declaration 输出）。
  */
  import { build } from 'esbuild'
- import { readFileSync, writeFileSync } from 'node:fs'
+ import { readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs'
  import { mkdirSync } from 'node:fs'
  import { execFileSync } from 'node:child_process'
 
- // 创建 lib 输出目录
+ // 清空 lib 输出目录，避免旧构建产物（如已删除的 worktree 残留 d.ts）混入
+ if (existsSync('lib')) {
+   rmSync('lib', { recursive: true, force: true })
+ }
  mkdirSync('lib', { recursive: true })
 
  // 需要保持外部（不打包）的 DSH 相关包：宿主与浏览器端都会引用
