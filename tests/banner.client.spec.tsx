@@ -97,7 +97,7 @@
      await waitFor(() => expect(fetch).toHaveBeenCalled())
      // 拉取失败后仍渲染默认横幅，并展示默认问候文案
      expect(container.querySelector(BANNER)).not.toBeNull()
-     expect(container.querySelector('[data-bga-banner] span')?.textContent).toBe('的 Harness 工作台')
+     expect(container.querySelector('[data-bga-banner] span')?.textContent).toBe('的专属 Harness 工作台')
    })
 
    // takeover 面板隐藏 hero 显示区域时隐藏横幅，面板消失后恢复横幅

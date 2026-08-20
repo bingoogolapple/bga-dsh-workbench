@@ -19,8 +19,15 @@ export interface BannerSettings {
 }
 /** 彩带的持久化设置 */
 export interface ConfettiSettings {
+    /** 彩带总开关：关闭后不播放特效与音效 */
+    show?: boolean;
     /** 是否播放庆祝音效 */
     sound?: boolean;
+}
+/** 英语学习的持久化设置 */
+export interface EnglishSettings {
+    /** 英语学习总开关：关闭后不弹出答题卡 */
+    enabled?: boolean;
 }
 /** 「打开方式」的持久化偏好（终端 / 编辑器，取值见 open-app.ts 偏好 ID 白名单）。 */
 export interface OpenPrefsSettings {
@@ -52,6 +59,7 @@ export interface ExtraOpenSettings {
 export interface WorkbenchSettings {
     banner?: BannerSettings;
     confetti?: ConfettiSettings;
+    english?: EnglishSettings;
     open?: OpenPrefsSettings;
     openExtra?: ExtraOpenSettings;
 }

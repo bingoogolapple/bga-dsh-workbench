@@ -17,6 +17,7 @@
  import { createRoot } from 'react-dom/client'
  import { WorkbenchBanner } from './Banner.tsx'
  import { ConfettiLayer } from './ConfettiLayer.tsx'
+import { EnglishLearningLayer } from './english/EnglishLearningLayer.tsx'
  import { SettingsSection, type WorkbenchSectionInjected, type WorkbenchSectionState, type OpenPrefsSectionState } from './SettingsSection.tsx'
  import { applyTaskBoard } from './task-board-apply.ts'
  import { mountWorkspaceOpenMenu } from './workspace-open.ts'
@@ -66,6 +67,7 @@
      root.render(<>
        <WorkbenchBanner />
        <ConfettiLayer />
+      <EnglishLearningLayer />
      </>)
      return () => {
        root.unmount()
@@ -180,7 +182,7 @@
           // 附加打开方式只影响工作区打开菜单（点击时实时拉取），无需广播刷新横幅，
           // 否则每次勾选都会触发 bga-dsh-workbench:config-changed 导致整页重渲染。
         },
-     }),
+      }),
    }, SettingsSection))
  
    

@@ -495,6 +495,7 @@ html[data-bga-kb-open] [class*=centerCol] > :not([data-bga-kb-view]) {
   color: var(--dsw-alias-state-error-primary);
 }
 .kanban_bga-kb-det {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: min(640px, calc(100vw - 48px));
@@ -505,6 +506,29 @@ html[data-bga-kb-open] [class*=centerCol] > :not([data-bga-kb-view]) {
   box-shadow: var(--dsw-shadow-lv3);
   color: var(--dsw-alias-label-primary);
   overflow: hidden;
+}
+.kanban_bga-kb-det-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+.kanban_bga-kb-det-close:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
 }
 .kanban_bga-kb-det-header {
   display: flex;

@@ -14,6 +14,7 @@
 
  import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
  import { playConfettiSound } from './confetti-sound.ts'
+import { EnglishSettings } from './english/EnglishSettings.tsx'
 import {
   EXTRA_OPEN_KINDS,
   EDITOR_OPTIONS,
@@ -50,8 +51,8 @@ import {
    /** 保存横幅配置：text / show / avatarPath 均可选，按需局部更新 */
    save: (patch: { text?: string; show?: boolean; avatarPath?: string }) => Promise<void>
  
-   /** 保存彩带配置（目前仅音效开关） */
-   saveConfetti: (patch: { sound?: boolean }) => Promise<void>
+   /** 保存彩带配置（总开关 + 音效开关） */
+   saveConfetti: (patch: { show?: boolean; sound?: boolean }) => Promise<void>
  
    /** 上传头像图片，返回服务端保存后的头像路径 */
    uploadAvatar: (file: File) => Promise<{ avatarPath: string }>
@@ -64,6 +65,8 @@ import {
 
    /** 保存「附加 IDE」展示开关（局部更新） */
    saveExtraOpen: (patch: ExtraOpenSettingsPatch) => Promise<void>
+
+  /** 英语学习区块（内置在下方，直接调用宿主 /english/* 路由） */
  }
  
  // 区块组件的完整 props = 运行时注入的插槽 props（PropsRuntime）+ 上述数据接口（InjectFace）。
@@ -71,7 +74,7 @@ import {
 
  // —— 区块内联样式（少量样式直接写死，避免引入复杂 CSS 依赖）——
  const rowStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0' }
- const labelStyle: CSSProperties = { minWidth: 72, fontWeight: 600, fontSize: 14 }
+ const labelStyle: CSSProperties = { minWidth: 72, fontWeight: 400, fontSize: 14 }
  const captionStyle: CSSProperties = { fontSize: 12, color: 'var(--dsw-alias-label-tertiary, #888)' }
  const buttonStyle: CSSProperties = {
    padding: '4px 12px', borderRadius: 8, border: '1px solid var(--dsw-alias-border-l2, #ccc)',
@@ -97,6 +100,7 @@ import {
    const [text, setText] = useState('') // 问候语文案（输入框受控值）
    const [show, setShow] = useState(true) // 横幅总开关
    const [sound, setSound] = useState(true) // 彩带音效开关
+   const [confettiShow, setConfettiShow] = useState(true) // 彩带总开关
    const [revision, setRevision] = useState(0) // 头像 URL 的 ?t= 版本号：上传后 +1 强制重新加载
    const [busy, setBusy] = useState(false) // 是否有耗时操作进行中（禁用按钮、避免重复提交）
    const [terminal, setTerminal] = useState('') // 终端偏好 ID（空串 = 系统默认）
@@ -257,6 +261,22 @@ import {
      }
    }
 
+   // 切换彩带总开关；保存失败时回滚
+   const onToggleConfettiShow = async (next: boolean): Promise<void> => {
+     setConfettiShow(next)
+     setBusy(true)
+     setMessage(null)
+     try {
+       await callbacks.current.saveConfetti({ show: next })
+       setMessage({ kind: 'ok', text: next ? '彩带已启用' : '彩带已关闭' })
+     } catch (error) {
+       setConfettiShow(!next)
+       setMessage({ kind: 'error', text: (error as Error).message })
+     } finally {
+       setBusy(false)
+     }
+   }
+
    // 试听彩带音效（不改变任何配置）
    const onPreviewSound = (): void => {
 
@@ -296,9 +316,6 @@ import {
      } finally {
        setBusy(false)
      }
-
-    // 切换「附加 IDE」展示开关：立即保存；失败时回滚并提示。
-
    }
 
     const onExtraToggle = async (key: string, checked: boolean): Promise<void> => {
@@ -321,133 +338,156 @@ import {
 
    return (
      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-       <h3 style={{ fontSize: 15, margin: '0 0 4px' }}>工作台横幅</h3>
-
-       {}
-       <div style={rowStyle}>
-         <span style={labelStyle}>横幅总开关</span>
-         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-           <input type="checkbox" checked={show} disabled={busy} onChange={event => onToggleShow(event.target.checked)} />
-           在空态顶部显示横幅
-         </label>
-       </div>
-
-       <div style={rowStyle}>
-         <span style={labelStyle}>头像</span>
-         <img
-           src={`/bga-dsh-workbench/avatar?t=${revision}`}
-           alt=""
-           width={44}
-           height={44}
-           style={{ borderRadius: '50%', objectFit: 'cover' }}
-         />
-         <button type="button" style={buttonStyle} disabled={busy} onClick={() => fileRef.current?.click()}>
-           更换图片
-         </button>
-         <input
-           ref={fileRef}
-           type="file"
-           accept="image/png,image/jpeg,image/gif,image/webp"
-           style={{ display: 'none' }}
-           onChange={onPick}
-         />
-         <button type="button" style={buttonStyle} disabled={busy} onClick={onReset}>
-           恢复默认
-         </button>
-       </div>
-       {avatarPath.length > 0 && <div style={{ ...rowStyle, paddingTop: 0 }}><span style={captionStyle}>{avatarPath}</span></div>}
-
-       <div style={rowStyle}>
-         <span style={labelStyle}>问候语</span>
-         <input
-           style={inputStyle}
-           value={text}
-           onChange={onTextChange}
-           onBlur={onTextBlur}
-         />
-         <span style={captionStyle}>输入后自动保存</span>
-       </div>
-
-       <h3 style={{ fontSize: 15, margin: '16px 0 4px' }}>彩带配置</h3>
-
-       <div style={rowStyle}>
-         <span style={labelStyle}>彩带音效</span>
-         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-           <input type="checkbox" checked={sound} disabled={busy} onChange={event => onToggleSound(event.target.checked)} />
-           整轮完成时播放庆祝音效
-         </label>
-         <button type="button" style={buttonStyle} disabled={busy} onClick={onPreviewSound}>
-           试听
-         </button>
-       </div>
-
- 
-       <h3 style={{ fontSize: 15, margin: '16px 0 4px' }}>打开方式</h3>
- 
-       <div style={rowStyle}>
-         <span style={labelStyle}>默认终端</span>
-         <select
-           style={narrowInputStyle}
-           value={terminal}
-           disabled={busy}
-           onChange={event => void onTerminalChange(event.target.value)}
-         >
-           {terminalOptionsFor(currentPlatform()).map(option => (
-             <option key={option.id} value={option.id}>{option.label}</option>
-           ))}
-         </select>
-         <span style={captionStyle}>打开目录时使用的终端（仅显示当前平台可用项）</span>
-       </div>
- 
-       <div style={rowStyle}>
-         <span style={labelStyle}>默认编辑器</span>
-         <select
-           style={inputStyle}
-           value={editor}
-           disabled={busy}
-           onChange={event => void onEditorChange(event.target.value)}
-         >
-           {EDITOR_OPTIONS.map(option => (
-             <option key={option.id} value={option.id}>{option.label}</option>
-           ))}
-         </select>
-         <span style={captionStyle}>打开目录时使用的编辑器</span>
-       </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0 0' }}>
-           <h3 style={{ fontSize: 15, margin: 0 }}>附加打开方式</h3>
-           <span style={captionStyle}>勾选后展示在工作区菜单尾部（默认全开）</span>
-         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12 }}>
-          {EXTRA_OPEN_KINDS.map((kind, _index) => {
-            const key = extraSettingKey(kind)
-            const checked = openExtra[key] ?? true
-            return (
-              <label
-                key={kind}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 13,
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  disabled={busy}
-                  onChange={event => void onExtraToggle(key, event.target.checked)}
-                />
-                {extraOpenLabel(kind)}
-              </label>
-            )
-          })}
+        <div style={{
+          background: 'var(--dsw-alias-bg-layer, #fff)', border: '1px solid var(--dsw-alias-border-l2, #ddd)',
+          borderRadius: 10, padding: '10px 12px', marginTop: 8,
+        }}>
+     <h3 style={{ fontSize: 15, margin: '0 0 8px' }}>工作台横幅</h3>
+  
+     <div style={rowStyle}>
+       <span style={labelStyle}>横幅总开关</span>
+       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+         <input type="checkbox" checked={show} disabled={busy} onChange={event => onToggleShow(event.target.checked)} />
+         在空态顶部显示横幅
+       </label>
+     </div>
+  
+     <div style={rowStyle}>
+       <span style={labelStyle}>头像</span>
+       <img
+         src={`/bga-dsh-workbench/avatar?t=${revision}`}
+         alt=""
+         width={44}
+         height={44}
+         style={{ borderRadius: '50%', objectFit: 'cover' }}
+       />
+       <button type="button" style={buttonStyle} disabled={busy} onClick={() => fileRef.current?.click()}>
+         更换图片
+       </button>
+       <input
+         ref={fileRef}
+         type="file"
+         accept="image/png,image/jpeg,image/gif,image/webp"
+         style={{ display: 'none' }}
+         onChange={onPick}
+       />
+       <button type="button" style={buttonStyle} disabled={busy} onClick={onReset}>
+         恢复默认
+       </button>
+     </div>
+     {avatarPath.length > 0 && <div style={{ ...rowStyle, paddingTop: 0 }}><span style={captionStyle}>{avatarPath}</span></div>}
+  
+     <div style={rowStyle}>
+       <span style={labelStyle}>问候语</span>
+       <input
+         style={inputStyle}
+         value={text}
+         onChange={onTextChange}
+         onBlur={onTextBlur}
+       />
+       <span style={captionStyle}>输入后自动保存</span>
+     </div>
         </div>
 
+        <div style={{
+          background: 'var(--dsw-alias-bg-layer, #fff)', border: '1px solid var(--dsw-alias-border-l2, #ddd)',
+          borderRadius: 10, padding: '10px 12px', marginTop: 8,
+        }}>
+     <h3 style={{ fontSize: 15, margin: '0 0 8px' }}>彩带配置</h3>
+  
+     <div style={rowStyle}>
+       <span style={labelStyle}>彩带总开关</span>
+       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+         <input type="checkbox" checked={confettiShow} disabled={busy} onChange={event => onToggleConfettiShow(event.target.checked)} />
+         启用彩带特效（关闭后不播放特效与音效）
+       </label>
+     </div>
+
+     <div style={rowStyle}>
+       <span style={labelStyle}>彩带音效</span>
+       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+         <input type="checkbox" checked={sound} disabled={busy} onChange={event => onToggleSound(event.target.checked)} />
+         整轮完成时播放庆祝音效
+       </label>
+       <button type="button" style={buttonStyle} disabled={busy} onClick={onPreviewSound}>
+         试听
+       </button>
+     </div>
+        </div>
+
+ 
+       <EnglishSettings />
        {message !== null && (
          <div style={message.kind === 'ok' ? okStyle : errorStyle}>{message.text}</div>
        )}
+        <div style={{
+          background: 'var(--dsw-alias-bg-layer, #fff)', border: '1px solid var(--dsw-alias-border-l2, #ddd)',
+          borderRadius: 10, padding: '10px 12px', marginTop: 8,
+        }}>
+          <h3 style={{ fontSize: 15, margin: '0 0 8px' }}>工作区打开方式</h3>
+
+          <div style={rowStyle}>
+            <span style={labelStyle}>默认终端</span>
+            <select
+              style={narrowInputStyle}
+              value={terminal}
+              disabled={busy}
+              onChange={event => void onTerminalChange(event.target.value)}
+            >
+              {terminalOptionsFor(currentPlatform()).map(option => (
+                <option key={option.id} value={option.id}>{option.label}</option>
+              ))}
+            </select>
+            <span style={captionStyle}>打开目录时使用的终端（仅显示当前平台可用项）</span>
+          </div>
+
+          <div style={rowStyle}>
+            <span style={labelStyle}>默认编辑器</span>
+            <select
+              style={inputStyle}
+              value={editor}
+              disabled={busy}
+              onChange={event => void onEditorChange(event.target.value)}
+            >
+              {EDITOR_OPTIONS.map(option => (
+                <option key={option.id} value={option.id}>{option.label}</option>
+              ))}
+            </select>
+            <span style={captionStyle}>打开目录时使用的编辑器</span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 0' }}>
+            <h3 style={{ fontSize: 13, margin: 0, fontWeight: 600 }}>附加打开方式</h3>
+            <span style={captionStyle}>勾选后展示在工作区菜单尾部（默认全开）</span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
+            {EXTRA_OPEN_KINDS.map((kind, _index) => {
+              const key = extraSettingKey(kind)
+              const checked = openExtra[key] ?? true
+              return (
+                <label
+                  key={kind}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    fontSize: 13,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={busy}
+                    onChange={event => void onExtraToggle(key, event.target.checked)}
+                  />
+                  {extraOpenLabel(kind)}
+                </label>
+              )
+            })}
+          </div>
+        </div>
+
      </div>
    )
  } 

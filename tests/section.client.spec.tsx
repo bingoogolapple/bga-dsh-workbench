@@ -22,7 +22,7 @@
  // 可用 overrides 局部覆盖以模拟各种场景
  function face(overrides: Partial<WorkbenchSectionInjected> = {}): WorkbenchSectionInjected {
    return {
-     load: vi.fn(async () => ({ avatarPath: '/a/avatar.png', text: '的 Harness 工作台', show: true, sound: true, terminal: '', editor: '' })),
+     load: vi.fn(async () => ({ avatarPath: '/a/avatar.png', text: '的专属 Harness 工作台', show: true, sound: true, terminal: '', editor: '' })),
      save: vi.fn(async () => {}),
      saveConfetti: vi.fn(async () => {}),
      uploadAvatar: vi.fn(async () => ({ avatarPath: '/b/avatar.png' })),
@@ -46,7 +46,7 @@
      expect(screen.getByText('恢复默认')).toBeTruthy()
      expect(screen.getByText('输入后自动保存')).toBeTruthy()
      // 输入框回填了加载到的默认问候文案
-     const input = screen.getByDisplayValue('的 Harness 工作台') as HTMLInputElement
+     const input = screen.getByDisplayValue('的专属 Harness 工作台') as HTMLInputElement
      expect(input).toBeTruthy()
      // load 只调用一次；纯渲染不应触发任何保存
      expect(injected.load).toHaveBeenCalledTimes(1)
@@ -79,10 +79,10 @@
    it('survives a config missing avatarPath (restart-less older host) without crashing', async () => {
      // load 返回的对象故意缺省 avatarPath
      render(<SettingsSection
-       {...(face({ load: vi.fn(async () => ({ text: '的 Harness 工作台', show: true } as never)) }) as unknown as Record<string, unknown>)}
+       {...(face({ load: vi.fn(async () => ({ text: '的专属 Harness 工作台', show: true } as never)) }) as unknown as Record<string, unknown>)}
      /> as never)
      await waitFor(() => expect(screen.getByText('更换图片')).toBeTruthy())
-     expect((screen.getByDisplayValue('的 Harness 工作台') as HTMLInputElement).value).toBe('的 Harness 工作台')
+     expect((screen.getByDisplayValue('的专属 Harness 工作台') as HTMLInputElement).value).toBe('的专属 Harness 工作台')
    })
 
    // 彩带模块：渲染音效开关，且开关初始状态来自解析后的配置（默认开启）
@@ -125,8 +125,8 @@
    it('auto-saves the greeting after a typing pause (debounced)', async () => {
      const injected = face()
      render(<SettingsSection {...(injected as unknown as Record<string, unknown>)} /> as never)
-     await waitFor(() => expect(screen.getByDisplayValue('的 Harness 工作台')).toBeTruthy())
-     const input = screen.getByDisplayValue('的 Harness 工作台') as HTMLInputElement
+     await waitFor(() => expect(screen.getByDisplayValue('的专属 Harness 工作台')).toBeTruthy())
+     const input = screen.getByDisplayValue('的专属 Harness 工作台') as HTMLInputElement
      fireEvent.change(input, { target: { value: '新问候语' } })
 
      // 刚输入完尚未停顿，不应触发保存
@@ -140,8 +140,8 @@
    it('flushes a pending greeting edit immediately on blur', async () => {
      const injected = face()
      render(<SettingsSection {...(injected as unknown as Record<string, unknown>)} /> as never)
-     await waitFor(() => expect(screen.getByDisplayValue('的 Harness 工作台')).toBeTruthy())
-     const input = screen.getByDisplayValue('的 Harness 工作台') as HTMLInputElement
+     await waitFor(() => expect(screen.getByDisplayValue('的专属 Harness 工作台')).toBeTruthy())
+     const input = screen.getByDisplayValue('的专属 Harness 工作台') as HTMLInputElement
      fireEvent.change(input, { target: { value: '模糊保存' } })
      fireEvent.blur(input) // 失焦触发立即保存
      await waitFor(() => expect(injected.save).toHaveBeenCalledWith({ text: '模糊保存' }))
@@ -151,11 +151,11 @@
    it('skips a save when the typed value matches the last persisted value', async () => {
      const injected = face()
      render(<SettingsSection {...(injected as unknown as Record<string, unknown>)} /> as never)
-     await waitFor(() => expect(screen.getByDisplayValue('的 Harness 工作台')).toBeTruthy())
-     const input = screen.getByDisplayValue('的 Harness 工作台') as HTMLInputElement
+     await waitFor(() => expect(screen.getByDisplayValue('的专属 Harness 工作台')).toBeTruthy())
+     const input = screen.getByDisplayValue('的专属 Harness 工作台') as HTMLInputElement
 
      // 改成与回填值相同的文案再失焦
-     fireEvent.change(input, { target: { value: '的 Harness 工作台' } })
+     fireEvent.change(input, { target: { value: '的专属 Harness 工作台' } })
      fireEvent.blur(input)
      // 等待超过防抖/刷新时间窗，确认没有多余保存发生
      await new Promise(resolve => setTimeout(resolve, 600))
@@ -168,17 +168,24 @@ describe('SettingsSection 打开方式分组', () => {
      render(<SettingsSection {...(injected as unknown as Record<string, unknown>)} /> as never)
    }
 
+   // 按选项值定位某个下拉。打开方式被挪到英语学习区块之后，DOM 里 combobox 的顺序
+   // 是 [英语学习的模式/掌握规则, 终端, 编辑器]，因此用「含该选项值」来定位终端/编辑器更稳。
+   function selectByValue(value: string): HTMLSelectElement {
+     const selects = screen.getAllByRole('combobox') as HTMLSelectElement[]
+     const found = selects.find(sel => Array.from(sel.options).some(option => option.value === value))
+     if (found === undefined) throw new Error(`no combobox contains option "${value}"`)
+     return found
+   }
+
    it('渲染「打开方式」分组与终端/编辑器下拉，初始值来自 load', async () => {
      const injected = face()
      renderSection(injected)
-     await waitFor(() => expect(screen.getByText('打开方式')).toBeTruthy())
+     await waitFor(() => expect(screen.getByText('工作区打开方式')).toBeTruthy())
      expect(screen.getByText('默认终端')).toBeTruthy()
      expect(screen.getByText('默认编辑器')).toBeTruthy()
      // load 未配置偏好（空串）→ 归一化为显式默认 ID（保证保存值能通过后端白名单）
-     const selects = screen.getAllByRole('combobox') as HTMLSelectElement[]
-     expect(selects.length).toBe(2)
-     expect(selects[0].value).toBe('terminal-default')
-     expect(selects[1].value).toBe('editor-default')
+     expect(selectByValue('terminal-default').value).toBe('terminal-default')
+     expect(selectByValue('editor-default').value).toBe('editor-default')
    })
 
    it('终端下拉回填当前偏好值并渲染平台可见选项', async () => {
@@ -186,11 +193,11 @@ describe('SettingsSection 打开方式分组', () => {
      // 终端可见选项为：系统默认 / GNOME 终端 / Konsole / XFCE 终端（无 iterm/wterm）
      const injected = face({ load: vi.fn(async () => ({ avatarPath: '', text: '', show: true, sound: true, terminal: 'terminal-gnome', editor: '' })) })
      renderSection(injected)
-     await waitFor(() => expect(screen.getAllByRole('combobox').length).toBe(2))
-     const selects = screen.getAllByRole('combobox') as HTMLSelectElement[]
-     expect(selects[0].value).toBe('terminal-gnome')
+     await waitFor(() => expect(screen.getAllByRole('combobox').length).toBe(6))
+     const terminal = selectByValue('terminal-gnome')
+     expect(terminal.value).toBe('terminal-gnome')
      // 平台过滤：iterm/wterm 不在选项中，gnome 在
-     const opts = Array.from(selects[0].querySelectorAll('option')).map(option => option.value)
+     const opts = Array.from(terminal.querySelectorAll('option')).map(option => option.value)
      expect(opts).toContain('terminal-gnome')
      expect(opts).not.toContain('terminal-iterm')
      expect(opts).not.toContain('terminal-wterm')
@@ -200,9 +207,8 @@ describe('SettingsSection 打开方式分组', () => {
      const saveOpenPrefs = vi.fn(async () => {})
      const injected = face({ saveOpenPrefs })
      renderSection(injected)
-     await waitFor(() => expect(screen.getAllByRole('combobox').length).toBe(2))
-     const selects = screen.getAllByRole('combobox') as HTMLSelectElement[]
-     fireEvent.change(selects[0], { target: { value: 'terminal-gnome' } })
+     await waitFor(() => expect(screen.getAllByRole('combobox').length).toBe(6))
+     fireEvent.change(selectByValue('terminal-default'), { target: { value: 'terminal-gnome' } })
      await waitFor(() => expect(saveOpenPrefs).toHaveBeenCalledWith({ terminal: 'terminal-gnome' }))
      await waitFor(() => expect(screen.getByText('终端偏好已保存')).toBeTruthy())
    })
@@ -212,11 +218,11 @@ describe('SettingsSection 打开方式分组', () => {
      const saveOpenPrefs = vi.fn(async () => { throw new Error('boom') })
      const injected = face({ saveOpenPrefs })
      renderSection(injected)
-     await waitFor(() => expect(screen.getAllByRole('combobox').length).toBe(2))
-     const selects = screen.getAllByRole('combobox') as HTMLSelectElement[]
-     fireEvent.change(selects[1], { target: { value: 'editor-insiders' } })
+     await waitFor(() => expect(screen.getAllByRole('combobox').length).toBe(6))
+     const editor = selectByValue('editor-default')
+     fireEvent.change(editor, { target: { value: 'editor-insiders' } })
      await waitFor(() => expect(screen.getByText('boom')).toBeTruthy())
      // 失败后回滚到加载值（空串 = 默认）
-     expect(selects[1].value).toBe('editor-default')
+     expect(editor.value).toBe('editor-default')
    })
  })

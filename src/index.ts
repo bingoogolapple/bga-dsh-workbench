@@ -14,6 +14,8 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { createWorkbenchRoutes, sniffImageType, type WorkbenchRuntime } from './routes.ts'
+import { createEnglishRoutes } from './english/routes.ts'
+import { generateEnglishText, listEnglishModels } from './english/generate.ts'
 import { registerWorkbenchSettings, type WorkbenchSettings } from './settings.ts'
 import { registerTaskBoardPrompt } from './task-board-host.ts'
 
@@ -50,14 +52,14 @@ import { registerTaskBoardPrompt } from './task-board-host.ts'
  /** 插件配置的 schema 声明（含默认值），供 DSH 校验用户配置 */
  export const Config: z<Config> = z.object({
    avatarPath: z.string().default(''),
-   text: z.string().default('的 Harness 工作台'),
+   text: z.string().default('的专属 Harness 工作台'),
    show: z.boolean().default(true),
    sound: z.boolean().default(true),
    storageDir: z.string(),
  })
 
  /** 横幅问候语的默认文本 */
- export const DEFAULT_TEXT = '的 Harness 工作台'
+ export const DEFAULT_TEXT = '的专属 Harness 工作台'
 
  /** 计算默认存储目录：优先 DSH_HOME 环境变量，否则使用 ~/.dsh 下的 bga-dsh-workbench */
  function defaultStorageDir(): string {
@@ -79,7 +81,11 @@ import { registerTaskBoardPrompt } from './task-board-host.ts'
        show: config.show ?? true,
      },
      confetti: {
+       show: config.show ?? true,
        sound: config.sound ?? true,
+     },
+     english: {
+       enabled: true,
      },
       open: {
         terminal: '',
@@ -125,7 +131,13 @@ import { registerTaskBoardPrompt } from './task-board-host.ts'
              show: typeof banner.show === 'boolean' ? banner.show : (baseBanner.show ?? true),
            },
            confetti: {
+             show: typeof confetti.show === 'boolean' ? confetti.show : (baseConfetti.show ?? true),
              sound: typeof confetti.sound === 'boolean' ? confetti.sound : (baseConfetti.sound ?? true),
+           },
+           english: {
+             enabled: typeof (resolved.english as { enabled?: unknown } | undefined)?.enabled === 'boolean'
+               ? (resolved.english as { enabled: boolean }).enabled
+               : true,
            },
             open: {
               terminal: typeof open.terminal === 'string' ? open.terminal : (baseOpen.terminal ?? ''),
@@ -159,6 +171,15 @@ import { registerTaskBoardPrompt } from './task-board-host.ts'
      }
      // 注册全部网页路由，并把每个路由的注销函数收集起来，便于在插件卸载时统一清理
      const disposers = createWorkbenchRoutes(runtime).map(route => child.webServer.register(route))
+     for (const route of createEnglishRoutes({
+        storageDir,
+        generateText: (topic, selection, nativeLang, targetLang) => generateEnglishText(child, topic, selection, nativeLang, targetLang),
+        listModels: () => listEnglishModels(child),
+        currentSelection: () => (child.get('agentDefaultModel') as { currentSelection(): { provider?: string; model?: string } } | undefined)?.currentSelection() ?? { provider: undefined, model: undefined },
+        saveSelection: async (selection) => { await (child.get('agentDefaultModel') as { saveSelection(sel: { provider: string; model: string }): Promise<void> } | undefined)?.saveSelection(selection) },
+      })) {
+       disposers.push(child.webServer.register(route))
+     }
      return () => {
        for (const dispose of disposers) dispose()
      }

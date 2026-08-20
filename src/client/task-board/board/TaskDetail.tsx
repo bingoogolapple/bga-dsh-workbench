@@ -290,6 +290,130 @@
  }
 
  /**
+ * 标题字段：仅当任务处于「待规划 / 待办」（未开始执行）时以输入框可编辑，
+ * 其余状态保持只读标题展示。
+ *
+ * 本地草稿随任务快照同步；失焦或回车时通过 controller.updateTask 落库，
+ * 标题去空白后为空则不更新（保留原标题）。
+ *
+ * @param props.controller 看板控制器。
+ * @param props.task 当前任务。
+ */
+ function TitleField({ controller, task }: { controller: BoardController; task: TaskRecord }) {
+   const editable = task.status === 'backlog' || task.status === 'todo'
+   // 本地编辑草稿：初始取任务当前标题，任务快照变化时同步。
+   const [draft, setDraft] = useState(task.title)
+   useEffect(() => { setDraft(task.title) }, [task.id, task.title])
+
+   // 保存：去空白后仅在内容变化且非空时写入任务。
+   const save = (): void => {
+     const trimmed = draft.trim()
+     setDraft(trimmed)
+     if (trimmed !== '' && trimmed !== task.title) controller.updateTask(task.id, { title: trimmed })
+   }
+
+   if (!editable) {
+     return <h2 className={css["bga-kb-det-title"]}>{task.title}</h2>
+   }
+   return (
+     <input
+       className={css["bga-kb-input"]}
+       aria-label={t('detail.title')}
+       value={draft}
+       spellCheck={false}
+       onChange={event => { setDraft(event.target.value) }}
+       onBlur={save}
+       onKeyDown={event => { if (event.key === 'Enter') save() }}
+     />
+   )
+ }
+
+ /**
+ * 描述小节：仅当任务处于「待规划 / 待办」（未开始执行）时以 textarea 可编辑，
+ * 其余状态保持只读文本展示（空时显示占位符 —）。
+ *
+ * 本地草稿随任务快照同步；失焦或 Ctrl/Cmd+Enter 时通过 controller.updateTask 落库。
+ *
+ * @param props.controller 看板控制器。
+ * @param props.task 当前任务。
+ */
+ function DescriptionSection({ controller, task }: { controller: BoardController; task: TaskRecord }) {
+   const editable = task.status === 'backlog' || task.status === 'todo'
+   // 本地编辑草稿：初始取任务当前描述，任务快照变化时同步。
+   const [draft, setDraft] = useState(task.description)
+   useEffect(() => { setDraft(task.description) }, [task.id, task.description])
+
+   // 保存：去空白后仅在内容变化时写入任务（避免空操作落盘）。
+   const save = (): void => {
+     const trimmed = draft.trim()
+     setDraft(trimmed)
+     if (trimmed !== task.description) controller.updateTask(task.id, { description: trimmed })
+   }
+
+   return (
+     <section className={css["bga-kb-det-section"]}>
+       <h4>{t('detail.description')}</h4>
+       {editable ? (
+         <textarea
+           className={css["bga-kb-input"]}
+           rows={3}
+           value={draft}
+           spellCheck={false}
+           onChange={event => { setDraft(event.target.value) }}
+           onBlur={save}
+           onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) save() }}
+         />
+       ) : (
+         <p className={css["bga-kb-det-text"]}>{task.description !== '' ? task.description : '—'}</p>
+       )}
+     </section>
+   )
+ }
+
+ /**
+ * 执行 Prompt 小节：仅当任务处于「待规划 / 待办」（未开始执行）时以 textarea 可编辑，
+ * 其余状态保持只读代码块展示（空时回落到标题）。
+ *
+ * 本地草稿随任务快照同步；失焦或 Ctrl/Cmd+Enter 时通过 controller.updateTask 落库。
+ *
+ * @param props.controller 看板控制器。
+ * @param props.task 当前任务。
+ */
+ function PromptSection({ controller, task }: { controller: BoardController; task: TaskRecord }) {
+   const editable = task.status === 'backlog' || task.status === 'todo'
+   // 本地编辑草稿：初始取任务当前 prompt，任务快照变化时同步。
+   const [draft, setDraft] = useState(task.prompt)
+   useEffect(() => { setDraft(task.prompt) }, [task.id, task.prompt])
+
+   // 保存：去空白后仅在内容变化时写入任务（避免空操作落盘）。
+   const save = (): void => {
+     const trimmed = draft.trim()
+     setDraft(trimmed)
+     if (trimmed !== task.prompt) controller.updateTask(task.id, { prompt: trimmed })
+   }
+
+   return (
+     <section className={css["bga-kb-det-section"]}>
+       <h4>{t('detail.prompt')}</h4>
+       {editable ? (
+         <textarea
+           className={css["bga-kb-input"]}
+           rows={4}
+           value={draft}
+           placeholder={t('new.promptPlaceholder')}
+           spellCheck={false}
+           onChange={event => { setDraft(event.target.value) }}
+           onBlur={save}
+           onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) save() }}
+         />
+       ) : (
+         <pre className={css["bga-kb-prompt"]}>{task.prompt !== '' ? task.prompt : task.title}</pre>
+       )}
+     </section>
+   )
+ }
+
+ /**
  * 任务详情组件（全屏模态）。
  *
  * createPortal 渲染到 document.body。内部维护两个要点：
@@ -334,32 +458,27 @@
      // 遮罩：点击遮罩本身（而非详情面板）即关闭。
      <div className={css["bga-kb-modal-bg"]} onMouseDown={event => { if (event.target === event.currentTarget) controller.closeTask() }}>
        <div className={css["bga-kb-det"]} role="dialog" aria-label={t('detail.title')}>
-         {/* 标题 + 状态徽标 + 关闭按钮 */}
-        <header className={css["bga-kb-det-header"]}>
-           <h2 className={css["bga-kb-det-title"]}>{current.title}</h2>
+         {/* 右上角关闭按钮 */}
+         <button
+           type="button"
+           className={css["bga-kb-det-close"]}
+           aria-label={t('detail.close')}
+           onClick={() => { controller.closeTask() }}
+         >
+           ×
+         </button>
+         {/* 标题 + 状态徽标 */}
+         <header className={css["bga-kb-det-header"]}>
+           <TitleField controller={controller} task={current} />
            <span className={css["bga-kb-badge"]} data-status={current.status}>{t(STATUS_KEY[current.status])}</span>
-           <button
-             type="button"
-             className={css["bga-kb-btn-icon"]}
-             aria-label={t('detail.close')}
-             onClick={() => { controller.closeTask() }}
-           >
-             ×
-           </button>
          </header>
 
          <div className={css["bga-kb-det-body"]}>
-           {/* 描述（空时显示占位符 —） */}
-           <section className={css["bga-kb-det-section"]}>
-             <h4>{t('detail.description')}</h4>
-             <p className={css["bga-kb-det-text"]}>{current.description !== '' ? current.description : '—'}</p>
-           </section>
+           {/* 描述（待规划/待办可编辑） */}
+           <DescriptionSection controller={controller} task={current} />
 
-           {/* 执行 Prompt（空时回落到标题） */}
-           <section className={css["bga-kb-det-section"]}>
-             <h4>{t('detail.prompt')}</h4>
-             <pre className={css["bga-kb-prompt"]}>{current.prompt !== '' ? current.prompt : current.title}</pre>
-           </section>
+           {/* 执行 Prompt（待规划/待办可编辑） */}
+           <PromptSection controller={controller} task={current} />
 
            <ExecutionSettingsSection controller={controller} task={current} />
 

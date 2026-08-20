@@ -223,11 +223,11 @@
  describe('config route', () => {
    // 返回完整解析后的配置，按模块键嵌套（banner / confetti）
    it('returns the resolved module options nested under their module keys', async () => {
-     const { runtime: rt } = runtime({ avatarPath: '/a.png', text: '的 Harness 工作台', show: true })
+     const { runtime: rt } = runtime({ avatarPath: '/a.png', text: '的专属 Harness 工作台', show: true })
      const { res, calls } = capture()
      await byPath(routes(rt), '/bga-dsh-workbench/config').handler({} as never, res)
      expect(JSON.parse(String(calls[0]!.body))).toEqual({
-       banner: { avatarPath: '/a.png', text: '的 Harness 工作台', show: true },
+       banner: { avatarPath: '/a.png', text: '的专属 Harness 工作台', show: true },
        confetti: { sound: true },
        open: { terminal: '', editor: '' },
        openExtra: { androidStudio: true, xcode: true, wechatDevtools: true, intellijIdea: true, devecoStudio: true, webstorm: true, pycharm: true, goland: true },

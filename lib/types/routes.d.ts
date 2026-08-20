@@ -56,7 +56,12 @@ export interface BannerSettingsPatch {
 }
 /** 彩带设置的部分更新 */
 export interface ConfettiSettingsPatch {
+    readonly show?: boolean;
     readonly sound?: boolean;
+}
+/** 英语学习设置的部分更新 */
+export interface EnglishSettingsPatch {
+    readonly enabled?: boolean;
 }
 /** 打开方式设置的部分更新 */
 export interface OpenSettingsPatch {
@@ -86,6 +91,7 @@ export interface ExtraOpenSettingsPatch {
 export interface WorkbenchSettingsPatch {
     readonly banner?: BannerSettingsPatch;
     readonly confetti?: ConfettiSettingsPatch;
+    readonly english?: EnglishSettingsPatch;
     readonly open?: OpenSettingsPatch;
     readonly openExtra?: ExtraOpenSettingsPatch;
 }

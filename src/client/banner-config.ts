@@ -16,8 +16,8 @@ export interface BannerConfig {
   readonly show: boolean
 }
 
-// 默认问候语后缀：用户未配置文案时使用（例如“xxx 的 Harness 工作台”）。
-export const DEFAULT_TEXT = '的 Harness 工作台'
+// 默认问候语后缀：用户未配置文案时使用（例如“xxx 的专属 Harness 工作台”）。
+export const DEFAULT_TEXT = '的专属 Harness 工作台'
 // 头像图片的读取地址（GET 获取图片；上传走 POST）。
 export const AVATAR_URL = '/bga-dsh-workbench/avatar'
 

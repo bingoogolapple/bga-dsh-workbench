@@ -22,6 +22,9 @@
  
    // 异步读取“是否启用音效”的函数；默认从 /config 读取，返回 boolean。
    loadSoundEnabled?: () => Promise<boolean>
+
+   // 异步读取"彩带总开关"的函数；默认从 /config 读取，返回 boolean。
+   loadConfettiEnabled?: () => Promise<boolean>
  }
 
  // —— 与运行时页面 DOM 约定对应的选择器 ——
@@ -51,6 +54,8 @@
  
  // 配置读取地址（读取彩带音效开关）
  const CONFIG_URL = '/bga-dsh-workbench/config'
+  // 「整轮完成」广播事件名：彩带层的其余联动方（如英语学习层）监听它触发自己的庆祝逻辑。
+  export const TURN_COMPLETE_EVENT = 'bga-dsh-workbench:turn-complete'
 
  // 从后端读取“彩带音效”开关；任何异常（网络错误、接口不存在）都回退返回 true（允许播放）。
  // @returns 是否启用音效
@@ -63,6 +68,20 @@
      return typeof value.confetti?.sound === 'boolean' ? value.confetti.sound : true
    } catch {
      return true // 后端不可用：保持默认开启，不阻塞特效播放
+   }
+ }
+
+ // 从后端读取"彩带总开关"；关闭时不播放特效与音效。
+ // @returns 是否启用彩带
+ export async function fetchConfettiEnabled(): Promise<boolean> {
+   try {
+     if (typeof fetch === 'undefined') return true
+     const response = await fetch(CONFIG_URL, { cache: 'no-store' })
+     if (!response.ok) return true
+     const value = await response.json() as { confetti?: { show?: unknown } }
+     return typeof value.confetti?.show === 'boolean' ? value.confetti.show : true
+   } catch {
+     return true
    }
  }
 
@@ -139,6 +158,7 @@
    fire = runConfettiBurst,
    playSound = playConfettiSound,
    loadSoundEnabled = fetchConfettiSound,
+   loadConfettiEnabled = fetchConfettiEnabled,
  }: ConfettiLayerProps): null {
    const fireRef = useRef(fire)
    fireRef.current = fire
@@ -146,6 +166,8 @@
    playSoundRef.current = playSound
    const loadSoundRef = useRef(loadSoundEnabled)
    loadSoundRef.current = loadSoundEnabled
+   const loadConfettiRef = useRef(loadConfettiEnabled)
+   loadConfettiRef.current = loadConfettiEnabled
 
    useEffect(() => {
      // 记录已触发过特效的末尾标记（WeakSet：不产生强引用，GC 友好），避免同一轮被重复庆祝
@@ -165,6 +187,11 @@
        active.clear()
      }
 
+     // 彩带总开关：默认开启；异步读取配置后按结果更新
+     let confettiEnabled = true
+     void loadConfettiRef.current().then((enabled: boolean) => {
+       if (!disposed) confettiEnabled = enabled
+     })
      // 音效开关：默认开启；异步读取配置后按结果更新（读取完成前不阻塞特效）
      let soundEnabled = true
      void loadSoundRef.current().then(enabled => {
@@ -202,11 +229,13 @@
          : []
 
        // 有合格回合完成：计算爆发区域、发射特效；若特效返回清理函数则登记到 active
-       if (eligible.length > 0) {
+       if (eligible.length > 0 && confettiEnabled) {
          const rect = burstRect()
          if (rect !== null) {
            const disposeBurst = fireRef.current(rect)
            if (typeof disposeBurst === 'function') active.add(disposeBurst)
+            // 通知同源庆祝方：整轮对话完成（英语学习层据此触发一轮答题）
+            window.dispatchEvent(new CustomEvent(TURN_COMPLETE_EVENT))
 
            // 音效开启时同步播放庆祝音效
            if (soundEnabled) playSoundRef.current()

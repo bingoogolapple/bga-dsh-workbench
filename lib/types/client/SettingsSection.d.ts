@@ -20,8 +20,9 @@ export interface WorkbenchSectionInjected {
         show?: boolean;
         avatarPath?: string;
     }) => Promise<void>;
-    /** 保存彩带配置（目前仅音效开关） */
+    /** 保存彩带配置（总开关 + 音效开关） */
     saveConfetti: (patch: {
+        show?: boolean;
         sound?: boolean;
     }) => Promise<void>;
     /** 上传头像图片，返回服务端保存后的头像路径 */

@@ -84,7 +84,13 @@ export interface ExtraOpenConfig {
 
  /** 彩带设置的部分更新 */
  export interface ConfettiSettingsPatch {
+   readonly show?: boolean
    readonly sound?: boolean
+ }
+
+ /** 英语学习设置的部分更新 */
+ export interface EnglishSettingsPatch {
+   readonly enabled?: boolean
  }
 
  /** 打开方式设置的部分更新 */
@@ -117,6 +123,7 @@ export interface ExtraOpenSettingsPatch {
  export interface WorkbenchSettingsPatch {
    readonly banner?: BannerSettingsPatch
    readonly confetti?: ConfettiSettingsPatch
+   readonly english?: EnglishSettingsPatch
    readonly open?: OpenSettingsPatch
     readonly openExtra?: ExtraOpenSettingsPatch
  }
@@ -289,7 +296,8 @@ export interface ExtraOpenSettingsPatch {
            // 逐字段校验类型并构造合法的更新补丁；任何非法字段都抛错走 400 分支
            const patch: {
              banner?: { avatarPath?: string; text?: string; show?: boolean }
-             confetti?: { sound?: boolean }
+             confetti?: { show?: boolean; sound?: boolean }
+             english?: { enabled?: boolean }
               openExtra?: Record<string, boolean>
               open?: { terminal?: string; editor?: string }
            } = {}
@@ -364,6 +372,19 @@ export interface ExtraOpenSettingsPatch {
                }
                patch.openExtra = item as Record<string, boolean>
              }
+           const english = parsed.english
+           if (english !== undefined) {
+             if (typeof english !== 'object' || english === null || Array.isArray(english)) {
+               throw new Error('english must be an object')
+             }
+             const efields = english as Record<string, unknown>
+             const eitem: { enabled?: boolean } = {}
+             if (efields.enabled !== undefined) {
+               if (typeof efields.enabled !== 'boolean') throw new Error('english.enabled must be a boolean')
+               eitem.enabled = efields.enabled
+             }
+             patch.english = eitem
+           }
            await runtime.updateSettings(patch)
            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
            res.end(OK({}))

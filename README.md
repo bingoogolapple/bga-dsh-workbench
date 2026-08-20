@@ -17,7 +17,7 @@ A personal workbench plugin customized for [DeepSeek Harness](https://github.com
 
 - Displays a workbench banner at the top of the hero empty state on the Harness web interface.
 - Customizable:
-  - **Greeting text**: defaults to "的 Harness 工作台" (Harness Workbench). You can change it to anything, e.g. "张三的 Harness 工作台" (Zhang San's Harness Workbench).
+  - **Greeting text**: defaults to "的专属 Harness 工作台" (Harness Workbench). You can change it to anything, e.g. "张三的专属 Harness 工作台" (Zhang San's Harness Workbench).
   - **Avatar image**: upload a local image as the banner avatar; if left empty, a built-in default avatar is used. Supported formats are PNG / JPG / GIF / WebP; the backend sniffs the type and persists it to the storage directory.
   - **Visibility toggle**: hide the banner at any time.
 - Configuration is persisted under the "Workbench Settings" namespace and takes effect immediately after editing on the settings page.
@@ -26,6 +26,23 @@ A personal workbench plugin customized for [DeepSeek Harness](https://github.com
 
 - Whenever a chat turn completes, the front end automatically plays a confetti animation.
 - Optional **celebration sound** toggle (on by default).
+
+### 🧠 English Learning (Duolingo-style micro-learning)
+
+- **Triggered with confetti**: whenever a chat turn completes, alongside the confetti a one-question English quiz pops up (when a learning card is configured).
+- **Topic cards**: each generated/built-in vocabulary set is a card; multiple cards coexist and you **manually select which card to learn today** (persisted).
+- **Content sources**:
+  - **Built-in CEFR-graded word lists** (A1–C2) — one click to adopt, no model needed.
+  - **Model generation** — pick a topic, a real agent session generates ~12 words with meanings and example sentences, cached locally.
+- **Gamification** (all local, no backend):
+  - ❤️ **Hearts** (5/day): a wrong answer costs one heart; 0 hearts locks the card until tomorrow.
+  - 🔥 **Streak**: consecutive active days.
+  - ⚡ **XP** and **badge tiers** (Bronze → Diamond).
+  - 🎓 **Mastery**: mastered items are marked complete (not deleted) and stop appearing in random picks.
+- **Mastery rules**: per card, choose **By-count** (answer N times) or **SRS spaced repetition**.
+- **Quiz modes**: Copy (type the word), Recall (type the English from the Chinese prompt), Choice (4-option), Audio (listen then spell, local Web Speech).
+- **Data privacy**: all progress persists to the host storage directory (`english-data.json`); **Export / Import JSON** for backup & migration — no self-hosted backend.
+- When the current card is fully mastered, a banner prompts you to pick another card or generate a new topic.
 
 ### 📋 Built-in Task Board
 

@@ -4,6 +4,6 @@ export interface BannerConfig {
     /** 是否显示横幅 */
     readonly show: boolean;
 }
-export declare const DEFAULT_TEXT = "\u7684 Harness \u5DE5\u4F5C\u53F0";
+export declare const DEFAULT_TEXT = "\u7684\u4E13\u5C5E Harness \u5DE5\u4F5C\u53F0";
 export declare const AVATAR_URL = "/bga-dsh-workbench/avatar";
 export declare function useBannerConfig(defaultText: string): BannerConfig;

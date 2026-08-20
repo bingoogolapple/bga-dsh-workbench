@@ -36,7 +36,7 @@ export interface Config extends BannerConfig {
 /** 插件配置的 schema 声明（含默认值），供 DSH 校验用户配置 */
 export declare const Config: z<Config>;
 /** 横幅问候语的默认文本 */
-export declare const DEFAULT_TEXT = "\u7684 Harness \u5DE5\u4F5C\u53F0";
+export declare const DEFAULT_TEXT = "\u7684\u4E13\u5C5E Harness \u5DE5\u4F5C\u53F0";
 /**
  * 插件主入口：在 Cordis 上下文中装配所有能力。
  * 1. 注册工作台设置命名空间并构建运行时，将横幅/头像/任务持久化路由挂到 webServer；
