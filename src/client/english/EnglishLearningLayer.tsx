@@ -204,10 +204,10 @@ export function EnglishLearningLayer(): JSX.Element | null {
     const limit = card?.sessionSize ?? 5
     const newCount = sessionCountRef.current
     if (newCount >= limit) {
-      autoCloseTimerRef.current = window.setTimeout(() => { autoCloseTimerRef.current = null; setSessionDone(true); setPhase('ask') }, 1500)
+      autoCloseTimerRef.current = window.setTimeout(() => { autoCloseTimerRef.current = null; setSessionDone(true); setPhase('ask') }, 1000)
       return
     }
-    const delay = phase === 'correct' ? 1500 : 4000
+    const delay = phase === 'correct' ? 1000 : 4000
     autoCloseTimerRef.current = window.setTimeout(() => { autoCloseTimerRef.current = null; dismissFeedback() }, delay)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
@@ -215,7 +215,7 @@ export function EnglishLearningLayer(): JSX.Element | null {
   // 本轮完成汇总 → 1.5s 后自动关闭。
   useEffect(() => {
     if (!sessionDone) return
-    const timer = window.setTimeout(() => { endSession() }, 1500)
+    const timer = window.setTimeout(() => { endSession() }, 1000)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionDone])
@@ -334,7 +334,7 @@ export function EnglishLearningLayer(): JSX.Element | null {
             <div style={{ fontSize: 13, marginTop: 6, opacity: 0.75 }}>
               🔥 连击 {feedback.streak} 天 · ❤️ 剩 {feedback.hearts}
             </div>
-            <div style={{ fontSize: 12, marginTop: 8, opacity: 0.6 }}>⏱ 2 秒后自动下一题</div>
+            <div style={{ fontSize: 12, marginTop: 8, opacity: 0.6 }}>⏱ 1 秒后自动下一题</div>
             <button type="button" style={btnStyle} onClick={dismissFeedback}>继续</button>
           </div>
         )}
