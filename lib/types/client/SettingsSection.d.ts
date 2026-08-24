@@ -10,7 +10,19 @@ export interface WorkbenchSectionState {
 export interface ConfettiSectionState {
     /** 整轮完成时是否播放庆祝音效 */
     readonly sound: boolean;
+    /** 彩带配色主题 */
+    readonly theme: ConfettiTheme;
+    /** 彩带强度 */
+    readonly intensity: ConfettiIntensity;
+    /** 触发时机 */
+    readonly trigger: ConfettiTrigger;
 }
+/** 彩带配色主题 */
+export type ConfettiTheme = 'default' | 'gold' | 'ocean' | 'sakura' | 'neon';
+/** 彩带强度 */
+export type ConfettiIntensity = 'small' | 'medium' | 'large' | 'epic';
+/** 彩带触发时机 */
+export type ConfettiTrigger = 'success' | 'every' | 'task';
 export interface WorkbenchSectionInjected {
     /** 读取横幅 + 彩带配置（内部做默认值回退） */
     load: () => Promise<WorkbenchSectionState & ConfettiSectionState & OpenPrefsSectionState>;
@@ -20,10 +32,13 @@ export interface WorkbenchSectionInjected {
         show?: boolean;
         avatarPath?: string;
     }) => Promise<void>;
-    /** 保存彩带配置（总开关 + 音效开关） */
+    /** 保存彩带配置（总开关 + 音效开关 + 主题/强度/触发时机） */
     saveConfetti: (patch: {
         show?: boolean;
         sound?: boolean;
+        theme?: ConfettiTheme;
+        intensity?: ConfettiIntensity;
+        trigger?: ConfettiTrigger;
     }) => Promise<void>;
     /** 上传头像图片，返回服务端保存后的头像路径 */
     uploadAvatar: (file: File) => Promise<{

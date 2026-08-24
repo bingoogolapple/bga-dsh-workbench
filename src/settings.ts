@@ -27,7 +27,22 @@
    show?: boolean
    /** 是否播放庆祝音效 */
    sound?: boolean
+   /** 彩带配色主题 */
+   theme?: ConfettiTheme
+   /** 彩带强度 */
+   intensity?: ConfettiIntensity
+   /** 触发时机 */
+   trigger?: ConfettiTrigger
  }
+
+ /** 彩带配色主题 */
+ export type ConfettiTheme = 'default' | 'gold' | 'ocean' | 'sakura' | 'neon'
+
+ /** 彩带强度 */
+ export type ConfettiIntensity = 'small' | 'medium' | 'large' | 'epic'
+
+ /** 彩带触发时机 */
+ export type ConfettiTrigger = 'success' | 'every' | 'task'
 
  /** 英语学习的持久化设置 */
  export interface EnglishSettings {
@@ -83,6 +98,24 @@ const WorkbenchSettingsSchema: z<WorkbenchSettings> = z.object({
   confetti: z.object({
     show: z.boolean(),
     sound: z.boolean(),
+    theme: z.union([
+      z.const('default'),
+      z.const('gold'),
+      z.const('ocean'),
+      z.const('sakura'),
+      z.const('neon'),
+    ]),
+    intensity: z.union([
+      z.const('small'),
+      z.const('medium'),
+      z.const('large'),
+      z.const('epic'),
+    ]),
+    trigger: z.union([
+      z.const('success'),
+      z.const('every'),
+      z.const('task'),
+    ]),
   }),
   english: z.object({
     enabled: z.boolean(),

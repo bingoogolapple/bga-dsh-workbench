@@ -86,6 +86,9 @@ export function EnglishSettings(_props: EnglishSettingsProps): JSX.Element {
   const [englishEnabled, setEnglishEnabled] = useState(true)
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  // Wrong word notebook + dashboard
+  const [wrongWords, setWrongWords] = useState<Array<{ itemId: string; cardId: string; text: string; meaning: string; example: string; wrongCount: number; lastWrongAt: number; addedAt: number }>>([])
+  const [dashboard, setDashboard] = useState<{ xp: number; streak: number; totalCompleted: number; totalWrong: number; totalCards: number; masteredCards: number; statistics: { answers: number; correct: number; wrong: number; xp: number }; day: { date: string; hearts: number; completedToday: number; correctToday: number; wrongToday: number } } | null>(null)
 
   // Model picker state (used when no default model is configured, or to re-pick).
   const [pickProviders, setPickProviders] = useState<ProviderModels[]>([])
@@ -104,6 +107,45 @@ export function EnglishSettings(_props: EnglishSettingsProps): JSX.Element {
     } catch {
       if (!silent) setMessage({ kind: 'error', text: '读取外语学习状态失败' })
     }
+  }
+
+  // Load wrong words and dashboard data
+  const refreshWrongWords = async (): Promise<void> => {
+    try {
+      const res = await englishApi.wrongWords()
+      if (res.ok) setWrongWords(res.wrongWords)
+    } catch { /* ignore */ }
+  }
+  const refreshDashboard = async (): Promise<void> => {
+    try {
+      const res = await englishApi.dashboard()
+      if (res.ok) setDashboard(res)
+    } catch { /* ignore */ }
+  }
+
+  const onFrequencyChange = async (frequency: string): Promise<void> => {
+    try {
+      const res = await englishApi.setFrequency(frequency, state?.dailyQuizLimit)
+      if (res.ok) { setState(res.state); setMessage({ kind: 'ok', text: '学习频率已更新' }) }
+    } catch { setMessage({ kind: 'error', text: '更新频率失败' }) }
+  }
+  const onDailyLimitChange = async (limit: number): Promise<void> => {
+    try {
+      const res = await englishApi.setFrequency(state?.frequency ?? 'every-turn', limit)
+      if (res.ok) setState(res.state)
+    } catch { /* ignore */ }
+  }
+  const onRemoveWrongWord = async (itemId: string): Promise<void> => {
+    try {
+      const res = await englishApi.removeWrongWord(itemId)
+      if (res.ok) { setState(res.state); await refreshWrongWords() }
+    } catch { /* ignore */ }
+  }
+  const onClearWrongWords = async (): Promise<void> => {
+    try {
+      const res = await englishApi.clearWrongWords()
+      if (res.ok) { setState(res.state); setWrongWords([]) }
+    } catch { /* ignore */ }
   }
 
   const pickerCancel = (): void => {
@@ -141,6 +183,8 @@ export function EnglishSettings(_props: EnglishSettingsProps): JSX.Element {
 
   useEffect(() => {
     void refresh(true)
+    void refreshWrongWords()
+    void refreshDashboard()
     englishApi.builtins().then(res => setBuiltins(res.builtins)).catch(() => { })
     englishApi.models().then(res => {
       const provs = res.providers ?? []
@@ -607,6 +651,79 @@ export function EnglishSettings(_props: EnglishSettingsProps): JSX.Element {
         <button type="button" style={buttonStyle} onClick={() => void onReset()}>清空数据</button>
         <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={e => void onImport(e)} />
       </div>
+
+      {/* 学习频率控制 */}
+      <h3 style={{ ...subH3Style, marginTop: 6 }}>学习频率</h3>
+      <div style={rowStyle}>
+        <span style={labelStyle}>答题频率</span>
+        <select style={{ ...inputStyle, flex: 1 }} value={state?.frequency ?? 'every-turn'} onChange={e => void onFrequencyChange(e.target.value)}>
+          <option value="every-turn">每轮对话后</option>
+          <option value="every-2">每 2 轮后</option>
+          <option value="every-5">每 5 轮后</option>
+          <option value="every-10">每 10 轮后</option>
+          <option value="manual">仅手动触发</option>
+        </select>
+      </div>
+      <div style={rowStyle}>
+        <span style={labelStyle}>每日上限</span>
+        <input style={{ ...inputStyle, width: 80 }} type="number" min={0} max={50} value={state?.dailyQuizLimit ?? 10} onChange={e => void onDailyLimitChange(Number(e.target.value))} />
+        <span style={captionStyle}>次（0 = 不限）</span>
+      </div>
+
+      {/* 错词本 */}
+      <h3 style={{ ...subH3Style, marginTop: 6 }}>错词本</h3>
+      {wrongWords.length === 0 ? (
+        <div style={{ ...captionStyle, padding: '8px 0' }}>暂无错词</div>
+      ) : (
+        <>
+          <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--dsw-alias-border-l2, #eee)', borderRadius: 8, marginBottom: 8 }}>
+            {wrongWords.map(w => (
+              <div key={w.itemId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', borderBottom: '1px solid var(--dsw-alias-border-l2, #f5f5f5)' }}>
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{w.text}</span>
+                  <span style={{ color: 'var(--dsw-alias-label-secondary, #666)', fontSize: 12, marginLeft: 8 }}>{w.meaning}</span>
+                  <span style={{ color: 'var(--dsw-alias-label-tertiary, #999)', fontSize: 11, marginLeft: 8 }}>错 {w.wrongCount} 次</span>
+                </div>
+                <button type="button" style={{ ...buttonStyle, padding: '2px 8px', fontSize: 11 }} onClick={() => void onRemoveWrongWord(w.itemId)}>移除</button>
+              </div>
+            ))}
+          </div>
+          <button type="button" style={{ ...buttonStyle, color: 'var(--dsw-alias-state-error-primary, #c00000)', borderColor: 'var(--dsw-alias-state-error-primary, #c00000)' }} onClick={() => void onClearWrongWords()}>清空错词本</button>
+        </>
+      )}
+
+      {/* 学习报告 */}
+      <h3 style={{ ...subH3Style, marginTop: 6 }}>学习报告</h3>
+      {dashboard !== null ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: '8px 0' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--dsw-alias-brand-primary, #0070f3)' }}>{dashboard.xp}</div>
+            <div style={{ fontSize: 11, color: 'var(--dsw-alias-label-tertiary, #999)' }}>总 XP</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#ff6b35' }}>{dashboard.streak}</div>
+            <div style={{ fontSize: 11, color: 'var(--dsw-alias-label-tertiary, #999)' }}>连续天数</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--dsw-alias-state-success-primary, #2e8e52)' }}>{dashboard.masteredCards}/{dashboard.totalCards}</div>
+            <div style={{ fontSize: 11, color: 'var(--dsw-alias-label-tertiary, #999)' }}>已掌握卡</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{dashboard.totalCompleted}</div>
+            <div style={{ fontSize: 11, color: 'var(--dsw-alias-label-tertiary, #999)' }}>已掌握词</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--dsw-alias-state-error-primary, #c00000)' }}>{dashboard.totalWrong}</div>
+            <div style={{ fontSize: 11, color: 'var(--dsw-alias-label-tertiary, #999)' }}>错词数</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>{dashboard.statistics.answers > 0 ? Math.round(dashboard.statistics.correct / dashboard.statistics.answers * 100) : 0}%</div>
+            <div style={{ fontSize: 11, color: 'var(--dsw-alias-label-tertiary, #999)' }}>正确率</div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ ...captionStyle, padding: '8px 0' }}>加载中...</div>
+      )}
 
       {message !== null && (
         <div style={message.kind === 'ok' ? okStyle : errorStyle}>{message.text}</div>

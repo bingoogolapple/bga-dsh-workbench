@@ -66,6 +66,19 @@ export interface EnglishDayState {
     /** Total wrong answers today. */
     wrongToday: number;
 }
+/** A wrong word entry for the notebook. */
+export interface WrongWordEntry {
+    itemId: string;
+    cardId: string;
+    text: string;
+    meaning: string;
+    example: string;
+    wrongCount: number;
+    lastWrongAt: number;
+    addedAt: number;
+}
+/** Learning frequency setting: how often to show quiz after conversation turns. */
+export type LearningFrequency = 'every-turn' | 'every-2' | 'every-5' | 'every-10' | 'manual';
 /** Global learning progress / gamification state. */
 export interface EnglishState {
     cards: EnglishCard[];
@@ -87,6 +100,16 @@ export interface EnglishState {
         wrong: number;
         xp: number;
     };
+    /** Wrong word notebook: items the user got wrong, for review. */
+    wrongWords: WrongWordEntry[];
+    /** Learning frequency: how often to show quiz after conversation turns. */
+    frequency: LearningFrequency;
+    /** Maximum quizzes per day (0 = unlimited). */
+    dailyQuizLimit: number;
+    /** How many quizzes shown today (resets daily). */
+    quizzesToday: number;
+    /** Date for the quizzesToday counter. */
+    quizzesDate: string;
 }
 /** Quiz question handed to the client (never leaks the answer in recall/audio). */
 export interface EnglishQuestion {
@@ -232,6 +255,10 @@ export declare function publicState(state: EnglishState): {
         name: string;
         next: number;
     };
+    frequency: LearningFrequency;
+    dailyQuizLimit: number;
+    quizzesToday: number;
+    quizzesDate: string;
 };
 /** XP -> badge tier. */
 export declare function badgeForXp(xp: number): {

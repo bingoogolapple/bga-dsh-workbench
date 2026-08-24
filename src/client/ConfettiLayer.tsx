@@ -15,7 +15,7 @@
  export interface ConfettiLayerProps {
  
    // 发射彩带特效的函数；默认用 runConfettiBurst。返回值为可提前中断特效的清理函数。
-   fire?: (rect: BurstRect) => () => void
+   fire?: typeof runConfettiBurst
  
    // 播放庆祝音效的函数；默认用 playConfettiSound。
    playSound?: () => void
@@ -25,7 +25,20 @@
 
    // 异步读取"彩带总开关"的函数；默认从 /config 读取，返回 boolean。
    loadConfettiEnabled?: () => Promise<boolean>
- }
+
+   // 异步读取彩带完整配置（主题/强度/触发时机）的函数；默认从 /config 读取。
+   loadConfettiConfig?: () => Promise<ConfettiConfig>
+   }
+
+   /** 彩带运行时配置（来自 /config 的 confetti 字段） */
+   export interface ConfettiConfig {
+   /** 彩带配色主题 */
+   theme: 'default' | 'gold' | 'ocean' | 'sakura' | 'neon'
+   /** 彩带强度 */
+   intensity: 'small' | 'medium' | 'large' | 'epic'
+   /** 触发时机 */
+   trigger: 'success' | 'every' | 'task'
+   }
 
  // —— 与运行时页面 DOM 约定对应的选择器 ——
  // 对话滚动容器：用于计算彩带爆发区域
@@ -56,6 +69,8 @@
  const CONFIG_URL = '/bga-dsh-workbench/config'
   // 「整轮完成」广播事件名：彩带层的其余联动方（如英语学习层）监听它触发自己的庆祝逻辑。
   export const TURN_COMPLETE_EVENT = 'bga-dsh-workbench:turn-complete'
+  // 「任务执行完成」广播事件名：监听任务执行结果，触发对应强度的彩带。
+  export const TASK_EXECUTION_EVENT = 'bga-dsh-workbench:task-execution'
 
  // 从后端读取“彩带音效”开关；任何异常（网络错误、接口不存在）都回退返回 true（允许播放）。
  // @returns 是否启用音效
@@ -82,6 +97,32 @@
      return typeof value.confetti?.show === 'boolean' ? value.confetti.show : true
    } catch {
      return true
+   }
+ }
+
+ // 从后端读取彩带完整配置（主题/强度/触发时机）；异常时回退到默认值。
+ export async function fetchConfettiConfig(): Promise<ConfettiConfig> {
+   const fallback: ConfettiConfig = { theme: 'default', intensity: 'large', trigger: 'success' }
+   try {
+     if (typeof fetch === 'undefined') return fallback
+     const response = await fetch(CONFIG_URL, { cache: 'no-store' })
+     if (!response.ok) return fallback
+     const value = await response.json() as {
+       confetti?: { theme?: unknown; intensity?: unknown; trigger?: unknown }
+     }
+     const c = value.confetti ?? {}
+     const theme = (typeof c.theme === 'string' && ['default', 'gold', 'ocean', 'sakura', 'neon'].includes(c.theme))
+       ? (c.theme as ConfettiConfig['theme'])
+       : fallback.theme
+     const intensity = (typeof c.intensity === 'string' && ['small', 'medium', 'large', 'epic'].includes(c.intensity))
+       ? (c.intensity as ConfettiConfig['intensity'])
+       : fallback.intensity
+     const trigger = (typeof c.trigger === 'string' && ['success', 'every', 'task'].includes(c.trigger))
+       ? (c.trigger as ConfettiConfig['trigger'])
+       : fallback.trigger
+     return { theme, intensity, trigger }
+   } catch {
+     return fallback
    }
  }
 
@@ -159,7 +200,8 @@
    playSound = playConfettiSound,
    loadSoundEnabled = fetchConfettiSound,
    loadConfettiEnabled = fetchConfettiEnabled,
- }: ConfettiLayerProps): null {
+   loadConfettiConfig = fetchConfettiConfig,
+   }: ConfettiLayerProps): null {
    const fireRef = useRef(fire)
    fireRef.current = fire
    const playSoundRef = useRef(playSound)
@@ -168,6 +210,8 @@
    loadSoundRef.current = loadSoundEnabled
    const loadConfettiRef = useRef(loadConfettiEnabled)
    loadConfettiRef.current = loadConfettiEnabled
+   const loadConfigRef = useRef(loadConfettiConfig)
+   loadConfigRef.current = loadConfettiConfig
 
    useEffect(() => {
      // 记录已触发过特效的末尾标记（WeakSet：不产生强引用，GC 友好），避免同一轮被重复庆祝
@@ -197,6 +241,17 @@
      void loadSoundRef.current().then(enabled => {
        if (!disposed) soundEnabled = enabled
      })
+     // 彩带完整配置（主题/强度/触发时机）：默认 success + gold-large 行为回退
+     let confettiTheme: ConfettiConfig['theme'] = 'gold'
+     let confettiIntensity: ConfettiConfig['intensity'] = 'large'
+     let confettiTrigger: ConfettiConfig['trigger'] = 'success'
+     void loadConfigRef.current().then(config => {
+       if (!disposed) {
+         confettiTheme = config.theme
+         confettiIntensity = config.intensity
+         confettiTrigger = config.trigger
+       }
+     })
 
      // MutationObserver 核心回调：对话 AI 的输出是逐步 append 到 DOM 的，
      // 每次有新增节点就解析其中的消息行，判断是否有“整轮完成”可以庆祝。
@@ -223,22 +278,34 @@
        // 才允许庆祝。也就是说：只有“用户提问之后的助手完成回合”值得放彩带；
        // 用户正在输入、出现报错或历史里还没有任何用户回合时都直接跳过。
        const gateSkipped = batchHasUser || batchHasError || !seenUserRow
-       // 可庆祝的候选 = 新出现的末尾标记中，位于对话流最底部且不属于“被停止回合”的那些
-       const eligible = !gateSkipped
-         ? freshTails.filter(tail => isBottomMost(tail) && !isStoppedTurn(tail))
-         : []
+       // 触发时机过滤：
+       //   - 'task'：普通对话回合不撒彩带（交由任务执行事件处理）
+       //   - 'every'：每一轮都庆祝（忽略错误门控）
+       //   - 'success'：仅成功回合庆祝（错误时不庆祝，沿用原有门控）
+       let eligible: Element[] = []
+       if (confettiTrigger === 'task') {
+         eligible = []
+       } else if (confettiTrigger === 'every') {
+         eligible = gateSkipped
+           ? []
+           : freshTails.filter(tail => isBottomMost(tail) && !isStoppedTurn(tail))
+       } else {
+         eligible = !gateSkipped
+           ? freshTails.filter(tail => isBottomMost(tail) && !isStoppedTurn(tail))
+           : []
+       }
 
        // 有合格回合完成：计算爆发区域、发射特效；若特效返回清理函数则登记到 active
        if (eligible.length > 0 && confettiEnabled) {
          const rect = burstRect()
          if (rect !== null) {
-           const disposeBurst = fireRef.current(rect)
+           const disposeBurst = fireRef.current(rect, { theme: confettiTheme, intensity: confettiIntensity })
            if (typeof disposeBurst === 'function') active.add(disposeBurst)
             // 通知同源庆祝方：整轮对话完成（英语学习层据此触发一轮答题）
             window.dispatchEvent(new CustomEvent(TURN_COMPLETE_EVENT))
 
-           // 音效开启时同步播放庆祝音效
-           if (soundEnabled) playSoundRef.current()
+            // 音效开启时同步播放庆祝音效
+            if (soundEnabled) playSoundRef.current()
          }
        }
 
@@ -249,8 +316,24 @@
      observer.observe(document.body, { childList: true, subtree: true })
      // 挂载全局手势监听，用于预热/解锁 AudioContext（浏览器自动播放策略）
      const disarmSound = armConfettiSound()
+     // 监听任务执行完成事件：根据执行结果触发不同强度的彩带
+     const onTaskExecution = (e: Event): void => {
+       const detail = (e as CustomEvent).detail as { outcome?: string } | undefined
+       const rect = burstRect()
+       if (rect === null) return
+       if (detail?.outcome === 'succeeded') {
+         const dispose = fireRef.current(rect, { intensity: confettiIntensity, theme: confettiTheme })
+         if (typeof dispose === 'function') active.add(dispose)
+         if (soundEnabled) playSoundRef.current()
+       } else if (detail?.outcome === 'failed') {
+         const dispose = fireRef.current(rect, { intensity: 'small', theme: 'default' })
+         if (typeof dispose === 'function') active.add(dispose)
+       }
+     }
+     window.addEventListener(TASK_EXECUTION_EVENT, onTaskExecution)
      return () => {
        // 卸载清理：先解除手势监听，再停止观测并中断所有特效
+       window.removeEventListener(TASK_EXECUTION_EVENT, onTaskExecution)
        disarmSound()
        stop()
      }

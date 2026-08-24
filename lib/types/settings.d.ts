@@ -23,7 +23,19 @@ export interface ConfettiSettings {
     show?: boolean;
     /** 是否播放庆祝音效 */
     sound?: boolean;
+    /** 彩带配色主题 */
+    theme?: ConfettiTheme;
+    /** 彩带强度 */
+    intensity?: ConfettiIntensity;
+    /** 触发时机 */
+    trigger?: ConfettiTrigger;
 }
+/** 彩带配色主题 */
+export type ConfettiTheme = 'default' | 'gold' | 'ocean' | 'sakura' | 'neon';
+/** 彩带强度 */
+export type ConfettiIntensity = 'small' | 'medium' | 'large' | 'epic';
+/** 彩带触发时机 */
+export type ConfettiTrigger = 'success' | 'every' | 'task';
 /** 英语学习的持久化设置 */
 export interface EnglishSettings {
     /** 英语学习总开关：关闭后不弹出答题卡 */

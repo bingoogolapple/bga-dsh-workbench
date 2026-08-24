@@ -6,7 +6,7 @@
 
 **🌐 [中文文档](README.zh-CN.md)**
 
-A personal workbench plugin customized for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): it shows a personalized banner with an avatar at the top of the hero empty state, plays a confetti animation when a chat turn completes, and ships a built-in task board that can drive agent sessions to execute tasks.
+A personal workbench plugin customized for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): it shows a personalized banner with an avatar at the top of the empty state, plays a confetti animation when a chat turn completes, and lets you pick up a bit of a foreign language along the way. It ships a built-in task board that can actually execute tasks, plus an "Open With" menu to open a workspace directory with your local apps.
 
 ![Main screen](images/bga-dsh-workbench-main.png)
 ![Settings page](images/bga-dsh-workbench-settings.png)
@@ -15,7 +15,7 @@ A personal workbench plugin customized for [DeepSeek Harness](https://github.com
 
 ### 🎉 Personalized Banner (Hero Banner)
 
-- Displays a workbench banner at the top of the hero empty state on the Harness web interface.
+- Displays a workbench banner at the top of the empty state on the Harness web interface. When enabled, it automatically hides Harness's default "Explore the Unknown" headline so the two never overlap.
 - Customizable:
   - **Greeting text**: defaults to "的专属 Harness 工作台" (Harness Workbench). You can change it to anything, e.g. "张三的专属 Harness 工作台" (Zhang San's Harness Workbench).
   - **Avatar image**: upload a local image as the banner avatar; if left empty, a built-in default avatar is used. Supported formats are PNG / JPG / GIF / WebP; the backend sniffs the type and persists it to the storage directory.
@@ -24,46 +24,78 @@ A personal workbench plugin customized for [DeepSeek Harness](https://github.com
 
 ### 🎊 Turn-Complete Celebration (Confetti)
 
-- Whenever a chat turn completes, the front end automatically plays a confetti animation.
-- Optional **celebration sound** toggle (on by default).
+- Whenever a chat turn completes, the page automatically plays a confetti animation to add a little ceremony to your workflow.
+- Fully customizable (all on the settings page):
+  - **Celebration sound**: on/off toggle plus a "Preview" button (on by default);
+  - **Color themes**: Default / Gold / Ocean / Sakura / Neon;
+  - **Intensity**: Small / Medium / Large / Epic;
+  - **Trigger timing**: On success only / Every turn / Task execution only (with "Task execution only", normal chat turns no longer trigger confetti).
 
-### 🧠 English Learning (Duolingo-style micro-learning)
+### 🧠 Foreign Language Learning (Duolingo-style micro-learning)
 
-- **Triggered with confetti**: whenever a chat turn completes, alongside the confetti a one-question English quiz pops up (when a learning card is configured).
-- **Topic cards**: each generated/built-in vocabulary set is a card; multiple cards coexist and you **manually select which card to learn today** (persisted).
+- **Triggered with confetti**: when a chat turn completes, alongside the confetti a one-question quiz pops up (when a learning card is configured), and you can control the pace:
+  - **Learning frequency**: after every turn / every 2 turns / every 5 turns / every 10 turns / manual trigger only;
+  - **Daily answer limit**: to avoid over-practice (set 0 for unlimited).
+- **Topic cards**: each vocabulary set is a card; multiple cards coexist and you **manually select which card to learn today** (persisted).
 - **Content sources**:
   - **Built-in CEFR-graded word lists** (A1–C2) — one click to adopt, no model needed.
-  - **Model generation** — pick a topic, a real agent session generates ~12 words with meanings and example sentences, cached locally.
+  - **Model generation** — pick a topic and the currently selected model generates ~20 items (about 10 words + 10 practical sentences with meanings and example sentences), cached locally.
+- **Multi-language support**: the target language can be English (including Simple English for beginners) / Japanese / Korean / Spanish / French / German / Portuguese / Russian / Arabic, and the definition (native) language is also selectable.
 - **Gamification** (all local, no backend):
   - ❤️ **Hearts** (5/day): a wrong answer costs one heart; 0 hearts locks the card until tomorrow.
   - 🔥 **Streak**: consecutive active days.
   - ⚡ **XP** and **badge tiers** (Bronze → Diamond).
   - 🎓 **Mastery**: mastered items are marked complete (not deleted) and stop appearing in random picks.
-- **Mastery rules**: per card, choose **By-count** (answer N times) or **SRS spaced repetition**.
-- **Quiz modes**: Copy (type the word), Recall (type the English from the Chinese prompt), Choice (4-option), Audio (listen then spell, local Web Speech).
+- **Mastery rules**: per card, choose **By-count** (answer N times) or **SRS spaced repetition**; the number of questions per session is also adjustable.
+- **Quiz modes**: Copy (type the word), Recall (type the target language from the definition), Choice, Audio (listen then spell, local Web Speech).
+- **Wrong-word notebook**: wrongly answered words go to the notebook automatically; you can review, remove, or clear them all for focused review.
+- **Learning report**: check total XP, streak days, mastered words, wrong words, and accuracy at any time.
 - **Data privacy**: all progress persists to the host storage directory (`english-data.json`); **Export / Import JSON** for backup & migration — no self-hosted backend.
 - When the current card is fully mastered, a banner prompts you to pick another card or generate a new topic.
 
 ### 📋 Built-in Task Board
 
-- Provides a "Task Board" entry in the sidebar, managing tasks in a multi-column kanban layout.
-- Tasks can be **actually executed** — driving an agent session to complete them. The execution target can be pinned to:
-  - a workspace;
-  - a mode (agent preset);
-  - a permission level (`read-only` / `workspace-write` / `danger-full-access`; falls back to the runtime default when omitted).
-- Supports **5-field cron scheduling** (e.g. `0 23 * * *` runs every day at 23:00).
+- Provides a "Task Board" entry in the sidebar, with two views you can switch between at any time:
+  - **Week Matrix** (default main view): lays out this week's tasks by "category × Mon–Sun" for a quick overview;
+  - **Five-column kanban**: Planned / To-do / In Progress / Done / Failed, ideal for pipeline-style progress.
+- **Two task types**:
+  - **Lightweight todo**: jot it down and tick it off manually — great for small chores;
+  - **Executable task**: hand the task to the agent to **actually execute** — the execution target can be pinned to:
+    - a workspace;
+    - a mode (agent preset);
+    - a permission level (read-only / workspace-write / full access; falls back to the runtime default when omitted).
+- **Scheduling**: supports 5-field cron expressions (e.g. `0 23 * * *` runs every day at 23:00), with handy presets like "daily 09:00 / hourly / every 10 min / every Monday 09:00".
+- **Organization**: tasks can carry a priority (High / Medium / Low), category, and date; when creating a task you can fill in common title templates from "quick phrases".
+- **Nice details**: the search box filters by title/description; the "quick add" box creates a todo by pressing Enter; archived tasks can be restored anytime.
+- **Execution history**: every executable task keeps a history you can review, including the generated chat session.
+- **Week Matrix extras** (use your weekly plan as a workbench):
+  - **Week start**: choose Monday or Sunday;
+  - **Category management**: built-in Business/Tech Needs, Operations, General Management, and Support Expectations categories, all customizable;
+  - **Daily check-in**: mark "today's daily report done" after finishing;
+  - **Stats panel**: per-category task counts and completion rates for the week;
+  - **Daily-report reminder**: banner reminder when the day is not yet complete;
+  - **One-click export**: copy this week's / a single day's / plain-text report, or export a JSON backup.
 - Task data is persisted by the host to the storage directory (`tasks.json`).
 - Limitations:
   - Scheduling runs in the browser, so the GUI tab must stay open; a missed run is skipped and never backfilled.
   - Execution consumes API quota.
 - The plugin injects task-board usage guidance into the agent's system prompt, so when you mention "task board / kanban / scheduled task", the agent can collaborate accordingly.
 
+### 🧭 Open With
+
+- In the workspace list, every workspace has an "Open" menu to open its directory with a local app in one click:
+  - **Open in Finder**: launches the system file manager (Explorer on Windows, file manager on Linux);
+  - **Open in Terminal**: launches your terminal (you can set a default terminal on the settings page, e.g. iTerm / Windows Terminal / GNOME Terminal / Konsole / XFCE; falls back to the system default);
+  - **Open in Editor**: launches your editor (you can set a default editor on the settings page, e.g. VS Code / Cursor / CodeBuddy / Trae / Qoder / CatPaw and other popular flavors; falls back to the system default).
+- **Extra IDEs** (optional, all on by default): the menu can also append "Open in Xcode / Android Studio / DevEco Studio / WeChat DevTools / WebStorm / IntelliJ IDEA / PyCharm / GoLand" — turn them on as needed.
+- **Thoughtful handling**: uninstalled apps are skipped automatically and fall back to available commands without erroring out; WeChat DevTools requires enabling its "Settings → Security → Service Port" first and only opens when the directory is a WeChat mini-program project.
+
 ## Task Board Credits
 
 The "Task Board" feature of this plugin is a **customized derivative** of the [`packages/dsh-task-board`](https://github.com/zhu1090093659/dsh-web-ui/tree/main/packages/dsh-task-board) sub-package from the open-source project [`zhu1090093659/dsh-web-ui`](https://github.com/zhu1090093659/dsh-web-ui).
 
 - **Upstream project**: `dsh-task-board` — a hot-pluggable DeepSeek Harness (DSH) Web GUI task board plugin, featuring a Host-authoritative ledger, real DSH session execution, and Host-side 5-field cron scheduling. It is mounted through `cordis.patch.yml` and the profile mechanism without modifying DSH source code.
-- **Customizations in this plugin**: while reusing its task-board core (multi-column kanban, Host-authoritative `tasks.json` ledger, real session execution, 5-field cron scheduling, system-prompt injection), this plugin integrates the workbench banner and turn-complete confetti, and unifies everything under the "Workbench Settings" namespace and host wiring.
+- **Customizations in this plugin**: while reusing its task-board core (multi-column kanban, Host-authoritative `tasks.json` ledger, real session execution, 5-field cron scheduling, system-prompt injection), this plugin adds its own **Week Matrix main view** (category × weekly plan, daily check-in, stats panel, daily-report reminder, one-click export), and integrates the workbench banner, turn-complete confetti, and the "Open With" menu — all unified under the "Workbench Settings" namespace and host wiring.
 - **License**: governed by the `LICENSE` file in the upstream `packages/dsh-task-board` directory; use and distribute in accordance with its open-source terms.
 
 ## For End Users
@@ -89,8 +121,8 @@ dsh plugin --profile <your profile name> add /path/to/bga-dsh-workbench
 
 ### Usage
 
-1. Open the Harness web interface and configure the banner text, avatar, and confetti sound under the "Workbench" group on the settings page.
-2. Enter the board from the sidebar "Task Board" entry, create and manage your tasks; enable scheduled execution when needed.
+1. Open the Harness web interface and configure the banner text, avatar, confetti theme & sound, foreign-language learning, and Open With preferences under the "Workbench" group on the settings page.
+2. Enter the board from the sidebar "Task Board" entry, manage your tasks with the Week Matrix or the kanban view; enable scheduled execution when needed.
 3. Collaborate with the "Task Board" in the chat, letting the agent help you manage and execute tasks.
 
 ## For Maintainers
@@ -111,7 +143,7 @@ bga-dsh-workbench/
 │   ├── task-board-host.ts        # injects task-board guidance into the agent system prompt
 │   ├── open-app.ts               # "Open with" logic (terminal / editor / extra IDEs)
 │   ├── core/                     # task board storage and other core logic
-│   └── client/                   # browser-side (Client): banner, task board UI, settings section, etc.
+│   └── client/                   # browser-side (Client): banner, confetti, foreign-language learning, task board UI, Open With, settings section, etc.
 ├── lib/                          # build output (esbuild bundle + tsc type declarations), shipped with the package
 ├── build.mjs                     # build script: produces lib/index.js (host) and lib/client.js (browser)
 ├── cordis.patch.yml              # Cordis composition patch: plugs the plugin into the host composition
@@ -192,7 +224,7 @@ OpenCode Go includes the following usage credit limits, so using cheaper models 
 ## Recommended Projects by the Author
 
 * You are welcome to try the author's first indie software product, the [God Assistant browser extension / plugin development platform](https://github.com/bingoogolapple/bga-god-assistant-config).
-* You are also welcome to check out the author's other DSH project, the [DSH Desktop Client (bga-dsh-client)](https://github.com/bingoogolapple/bga-dsh-client): a Tauri 2 based DeepSeek Harness desktop client offering menu bar, tray, window management, and config import/export, runnable standalone or alongside the gateway.
+* You are also welcome to check out the author's other DSH project, the [DSH Desktop Client (bga-dsh-client)](https://github.com/bingoogolapple/bga-dsh-client): a Tauri 2 based DeepSeek Harness desktop client offering one-click installation for novices, dsh service management, and LAN proxy service management.
 
 ## License
 

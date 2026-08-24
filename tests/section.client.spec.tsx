@@ -22,7 +22,7 @@
  // 可用 overrides 局部覆盖以模拟各种场景
  function face(overrides: Partial<WorkbenchSectionInjected> = {}): WorkbenchSectionInjected {
    return {
-     load: vi.fn(async () => ({ avatarPath: '/a/avatar.png', text: '的专属 Harness 工作台', show: true, sound: true, terminal: '', editor: '' })),
+     load: vi.fn(async () => ({ avatarPath: '/a/avatar.png', text: '的专属 Harness 工作台', show: true, sound: true, theme: 'default', intensity: 'large', trigger: 'success', terminal: '', editor: '' })),
      save: vi.fn(async () => {}),
      saveConfetti: vi.fn(async () => {}),
      uploadAvatar: vi.fn(async () => ({ avatarPath: '/b/avatar.png' })),
@@ -191,9 +191,9 @@ describe('SettingsSection 打开方式分组', () => {
    it('终端下拉回填当前偏好值并渲染平台可见选项', async () => {
      // jsdom 的 userAgent 无平台标识 → currentPlatform 判定为 linux，
      // 终端可见选项为：系统默认 / GNOME 终端 / Konsole / XFCE 终端（无 iterm/wterm）
-     const injected = face({ load: vi.fn(async () => ({ avatarPath: '', text: '', show: true, sound: true, terminal: 'terminal-gnome', editor: '' })) })
+     const injected = face({ load: vi.fn(async () => ({ avatarPath: '', text: '', show: true, sound: true, theme: 'default', intensity: 'large', trigger: 'success', terminal: 'terminal-gnome', editor: '' })) })
      renderSection(injected)
-     await waitFor(() => expect(screen.getAllByRole('combobox').length).toBe(6))
+     await waitFor(() => expect(screen.getAllByRole('combobox').length).toBe(10))
      const terminal = selectByValue('terminal-gnome')
      expect(terminal.value).toBe('terminal-gnome')
      // 平台过滤：iterm/wterm 不在选项中，gnome 在
@@ -207,7 +207,7 @@ describe('SettingsSection 打开方式分组', () => {
      const saveOpenPrefs = vi.fn(async () => {})
      const injected = face({ saveOpenPrefs })
      renderSection(injected)
-     await waitFor(() => expect(screen.getAllByRole('combobox').length).toBe(6))
+     await waitFor(() => expect(screen.getAllByRole('combobox').length).toBe(10))
      fireEvent.change(selectByValue('terminal-default'), { target: { value: 'terminal-gnome' } })
      await waitFor(() => expect(saveOpenPrefs).toHaveBeenCalledWith({ terminal: 'terminal-gnome' }))
      await waitFor(() => expect(screen.getByText('终端偏好已保存')).toBeTruthy())
@@ -218,11 +218,43 @@ describe('SettingsSection 打开方式分组', () => {
      const saveOpenPrefs = vi.fn(async () => { throw new Error('boom') })
      const injected = face({ saveOpenPrefs })
      renderSection(injected)
-     await waitFor(() => expect(screen.getAllByRole('combobox').length).toBe(6))
+     await waitFor(() => expect(screen.getAllByRole('combobox').length).toBe(10))
      const editor = selectByValue('editor-default')
      fireEvent.change(editor, { target: { value: 'editor-insiders' } })
      await waitFor(() => expect(screen.getByText('boom')).toBeTruthy())
      // 失败后回滚到加载值（空串 = 默认）
      expect(editor.value).toBe('editor-default')
    })
- })
+   })
+
+   describe('SettingsSection 支持作者模块', () => {
+   // 「支持作者」模块为纯展示区块，位于「工作区打开方式」之后，渲染打赏入口与项目推荐链接
+   it('渲染「支持作者」模块及打赏入口与项目推荐链接', async () => {
+     const injected = face()
+     render(<SettingsSection {...(injected as unknown as Record<string, unknown>)} /> as never)
+     await waitFor(() => expect(screen.getByText('支持作者')).toBeTruthy())
+
+     // 两个子分组标题
+     expect(screen.getByText('打赏支持作者')).toBeTruthy()
+     expect(screen.getByText('作者项目推荐')).toBeTruthy()
+
+     // 打赏入口：OpenCode Go 邀请链接（href 指向作者的邀请链接）
+     const donateLink = screen.getByText('订阅 OpenCode Go') as HTMLAnchorElement
+     expect(donateLink.tagName).toBe('A')
+     expect(donateLink.href).toBe('https://opencode.ai/go?ref=8CYK5082AG')
+
+     // 项目推荐：两个仓库链接
+     const godLink = screen.getByText('上帝小助手浏览器扩展/插件开发平台') as HTMLAnchorElement
+     expect(godLink.href).toBe('https://github.com/bingoogolapple/bga-god-assistant-config')
+     const dshLink = screen.getByText('DSH 桌面客户端（bga-dsh-client）') as HTMLAnchorElement
+     expect(dshLink.href).toBe('https://github.com/bingoogolapple/bga-dsh-client')
+
+     // 链接可辨识性：标准链接蓝 rgb(22,119,255)（#1677ff），业界常见交互——默认无下划线、悬停时出现下划线
+     for (const link of [donateLink, godLink, dshLink]) {
+       expect(link.style.color).toBe('rgb(22, 119, 255)')
+       expect(link.style.textDecoration).not.toContain('underline')
+     }
+     fireEvent.mouseEnter(donateLink)
+     expect(donateLink.style.textDecoration).toContain('underline')
+   })
+   })

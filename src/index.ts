@@ -133,6 +133,9 @@ import { registerTaskBoardPrompt } from './task-board-host.ts'
            confetti: {
              show: typeof confetti.show === 'boolean' ? confetti.show : (baseConfetti.show ?? true),
              sound: typeof confetti.sound === 'boolean' ? confetti.sound : (baseConfetti.sound ?? true),
+             theme: confetti.theme ?? (baseConfetti.theme ?? 'default'),
+             intensity: confetti.intensity ?? (baseConfetti.intensity ?? 'large'),
+             trigger: confetti.trigger ?? (baseConfetti.trigger ?? 'success'),
            },
            english: {
              enabled: typeof (resolved.english as { enabled?: unknown } | undefined)?.enabled === 'boolean'

@@ -14,7 +14,9 @@
 
  import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
  import { playConfettiSound } from './confetti-sound.ts'
+import { t } from './task-board/locales.ts'
 import { EnglishSettings } from './english/EnglishSettings.tsx'
+import { SupportAuthorSection } from './SupportAuthorSection.tsx'
 import {
   EXTRA_OPEN_KINDS,
   EDITOR_OPTIONS,
@@ -40,7 +42,22 @@ import {
  export interface ConfettiSectionState {
    /** 整轮完成时是否播放庆祝音效 */
    readonly sound: boolean
+   /** 彩带配色主题 */
+   readonly theme: ConfettiTheme
+   /** 彩带强度 */
+   readonly intensity: ConfettiIntensity
+   /** 触发时机 */
+   readonly trigger: ConfettiTrigger
  }
+
+ /** 彩带配色主题 */
+ export type ConfettiTheme = 'default' | 'gold' | 'ocean' | 'sakura' | 'neon'
+
+ /** 彩带强度 */
+ export type ConfettiIntensity = 'small' | 'medium' | 'large' | 'epic'
+
+ /** 彩带触发时机 */
+ export type ConfettiTrigger = 'success' | 'every' | 'task'
  
  // 宿主注入给本区块的数据访问接口（实际实现见 index.tsx 的 slots.register）。
  export interface WorkbenchSectionInjected {
@@ -51,8 +68,8 @@ import {
    /** 保存横幅配置：text / show / avatarPath 均可选，按需局部更新 */
    save: (patch: { text?: string; show?: boolean; avatarPath?: string }) => Promise<void>
  
-   /** 保存彩带配置（总开关 + 音效开关） */
-   saveConfetti: (patch: { show?: boolean; sound?: boolean }) => Promise<void>
+   /** 保存彩带配置（总开关 + 音效开关 + 主题/强度/触发时机） */
+   saveConfetti: (patch: { show?: boolean; sound?: boolean; theme?: ConfettiTheme; intensity?: ConfettiIntensity; trigger?: ConfettiTrigger }) => Promise<void>
  
    /** 上传头像图片，返回服务端保存后的头像路径 */
    uploadAvatar: (file: File) => Promise<{ avatarPath: string }>
@@ -101,6 +118,9 @@ import {
    const [show, setShow] = useState(true) // 横幅总开关
    const [sound, setSound] = useState(true) // 彩带音效开关
    const [confettiShow, setConfettiShow] = useState(true) // 彩带总开关
+   const [theme, setTheme] = useState<ConfettiTheme>('default') // 彩带配色主题
+   const [intensity, setIntensity] = useState<ConfettiIntensity>('large') // 彩带强度
+   const [trigger, setTrigger] = useState<ConfettiTrigger>('success') // 触发时机
    const [revision, setRevision] = useState(0) // 头像 URL 的 ?t= 版本号：上传后 +1 强制重新加载
    const [busy, setBusy] = useState(false) // 是否有耗时操作进行中（禁用按钮、避免重复提交）
    const [terminal, setTerminal] = useState('') // 终端偏好 ID（空串 = 系统默认）
@@ -132,6 +152,9 @@ import {
        latestTextRef.current = nextText
        setShow(typeof state.show === 'boolean' ? state.show : true)
        setSound(typeof state.sound === 'boolean' ? state.sound : true)
+      setTheme(state.theme ?? 'default')
+      setIntensity(state.intensity ?? 'large')
+      setTrigger(state.trigger ?? 'success')
         setTerminal(normalizeTerminalId(typeof state.terminal === 'string' ? state.terminal : ''))
         setEditor(normalizeEditorId(typeof state.editor === 'string' ? state.editor : ''))
         // 「附加 IDE」开关回填（缺省字段视为开启）
@@ -283,6 +306,58 @@ import {
      setMessage(null)
      playConfettiSound()
    }
+
+   // 切换彩带配色主题；保存失败时回滚
+   const onThemeChange = async (next: ConfettiTheme): Promise<void> => {
+     const previous = theme
+     setTheme(next)
+     setBusy(true)
+     setMessage(null)
+     try {
+       await callbacks.current.saveConfetti({ theme: next })
+       setMessage({ kind: 'ok', text: '彩带主题已保存' })
+     } catch (error) {
+       setTheme(previous)
+       setMessage({ kind: 'error', text: (error as Error).message })
+     } finally {
+       setBusy(false)
+     }
+   }
+
+   // 切换彩带强度；保存失败时回滚
+   const onIntensityChange = async (next: ConfettiIntensity): Promise<void> => {
+     const previous = intensity
+     setIntensity(next)
+     setBusy(true)
+     setMessage(null)
+     try {
+       await callbacks.current.saveConfetti({ intensity: next })
+       setMessage({ kind: 'ok', text: '彩带强度已保存' })
+     } catch (error) {
+       setIntensity(previous)
+       setMessage({ kind: 'error', text: (error as Error).message })
+     } finally {
+       setBusy(false)
+     }
+   }
+
+   // 切换彩带触发时机；保存失败时回滚
+   const onTriggerChange = async (next: ConfettiTrigger): Promise<void> => {
+     const previous = trigger
+     setTrigger(next)
+     setBusy(true)
+     setMessage(null)
+     try {
+       await callbacks.current.saveConfetti({ trigger: next })
+       setMessage({ kind: 'ok', text: '触发时机已保存' })
+     } catch (error) {
+       setTrigger(previous)
+       setMessage({ kind: 'error', text: (error as Error).message })
+     } finally {
+       setBusy(false)
+     }
+   }
+
  
    // 切换终端偏好：选择后立即保存；失败时回滚下拉值并提示错误。
    const onTerminalChange = async (next: string): Promise<void> => {
@@ -410,10 +485,56 @@ import {
          整轮完成时播放庆祝音效
        </label>
        <button type="button" style={buttonStyle} disabled={busy} onClick={onPreviewSound}>
-         试听
-       </button>
-     </div>
-        </div>
+        试听
+      </button>
+    </div>
+
+    <div style={rowStyle}>
+      <span style={labelStyle}>{t('confetti.theme')}</span>
+      <select
+        style={narrowInputStyle}
+        value={theme}
+        disabled={busy}
+        onChange={event => void onThemeChange(event.target.value as ConfettiTheme)}
+      >
+        <option value="default">{t('confetti.theme.default')}</option>
+        <option value="gold">{t('confetti.theme.gold')}</option>
+        <option value="ocean">{t('confetti.theme.ocean')}</option>
+        <option value="sakura">{t('confetti.theme.sakura')}</option>
+        <option value="neon">{t('confetti.theme.neon')}</option>
+      </select>
+    </div>
+
+    <div style={rowStyle}>
+      <span style={labelStyle}>{t('confetti.intensity')}</span>
+      <select
+        style={narrowInputStyle}
+        value={intensity}
+        disabled={busy}
+        onChange={event => void onIntensityChange(event.target.value as ConfettiIntensity)}
+      >
+        <option value="small">{t('confetti.intensity.small')}</option>
+        <option value="medium">{t('confetti.intensity.medium')}</option>
+        <option value="large">{t('confetti.intensity.large')}</option>
+        <option value="epic">{t('confetti.intensity.epic')}</option>
+      </select>
+    </div>
+
+    <div style={rowStyle}>
+      <span style={labelStyle}>{t('confetti.trigger')}</span>
+      <select
+        style={narrowInputStyle}
+        value={trigger}
+        disabled={busy}
+        onChange={event => void onTriggerChange(event.target.value as ConfettiTrigger)}
+      >
+        <option value="success">{t('confetti.trigger.success')}</option>
+        <option value="every">{t('confetti.trigger.every')}</option>
+        <option value="task">{t('confetti.trigger.task')}</option>
+      </select>
+      <span style={captionStyle}>「仅任务执行」时普通对话不再撒彩带</span>
+    </div>
+       </div>
 
  
        <EnglishSettings />
@@ -487,6 +608,8 @@ import {
             })}
           </div>
         </div>
+
+        <SupportAuthorSection />
 
      </div>
    )

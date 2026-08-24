@@ -70,6 +70,21 @@ export interface EnglishDayState {
   wrongToday: number
 }
 
+/** A wrong word entry for the notebook. */
+export interface WrongWordEntry {
+  itemId: string
+  cardId: string
+  text: string
+  meaning: string
+  example: string
+  wrongCount: number
+  lastWrongAt: number
+  addedAt: number
+}
+
+/** Learning frequency setting: how often to show quiz after conversation turns. */
+export type LearningFrequency = 'every-turn' | 'every-2' | 'every-5' | 'every-10' | 'manual'
+
 /** Global learning progress / gamification state. */
 export interface EnglishState {
   cards: EnglishCard[]
@@ -86,6 +101,16 @@ export interface EnglishState {
   /** Total answers recorded (for stats). */
   totalAnswers: number
   statistics: { answers: number; correct: number; wrong: number; xp: number }
+  /** Wrong word notebook: items the user got wrong, for review. */
+  wrongWords: WrongWordEntry[]
+  /** Learning frequency: how often to show quiz after conversation turns. */
+  frequency: LearningFrequency
+  /** Maximum quizzes per day (0 = unlimited). */
+  dailyQuizLimit: number
+  /** How many quizzes shown today (resets daily). */
+  quizzesToday: number
+  /** Date for the quizzesToday counter. */
+  quizzesDate: string
 }
 
 /** Quiz question handed to the client (never leaks the answer in recall/audio). */
@@ -217,6 +242,11 @@ export function makeDefaultState(): EnglishState {
     totalCompleted: 0,
     totalAnswers: 0,
     statistics: { answers: 0, correct: 0, wrong: 0, xp: 0 },
+    wrongWords: [],
+    frequency: 'every-turn',
+    dailyQuizLimit: 10,
+    quizzesToday: 0,
+    quizzesDate: '',
   }
 }
 
@@ -330,6 +360,23 @@ export function gradeAnswer(
     // Wrong answer costs a heart and resets the item's progress.
     state.day.hearts = Math.max(0, state.day.hearts - 1)
     resetItemProgress(item)
+    // Track wrong words in notebook
+    const existing = state.wrongWords.find(w => w.itemId === item.id)
+    if (existing) {
+      existing.wrongCount += 1
+      existing.lastWrongAt = now
+    } else {
+      state.wrongWords.push({
+        itemId: item.id,
+        cardId,
+        text: item.text,
+        meaning: item.meaning,
+        example: item.example,
+        wrongCount: 1,
+        lastWrongAt: now,
+        addedAt: now,
+      })
+    }
   }
 
   return {
@@ -473,6 +520,10 @@ export function publicState(state: EnglishState) {
     totalCompleted: state.totalCompleted,
     statistics: { ...state.statistics },
     badge: badgeForXp(state.xp),
+    frequency: state.frequency,
+    dailyQuizLimit: state.dailyQuizLimit,
+    quizzesToday: state.quizzesToday,
+    quizzesDate: state.quizzesDate,
   }
 }
 

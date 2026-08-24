@@ -71,8 +71,28 @@
    life: number
  }
 
- // 粒子调色板：深色与亮色混合，保证在深色或浅色页面上都足够醒目
- const COLORS = ['#0070f3', '#111111', '#f5f5f5', '#00d4ff', '#ff0080', '#ffbd00', '#7928ca', '#34d399']
+ // 彩带强度：控制粒子数量与动画规模
+ export type ConfettiIntensity = 'small' | 'medium' | 'large' | 'epic'
+
+ // 彩带主题：不同场景的配色方案
+ export type ConfettiTheme = 'default' | 'gold' | 'ocean' | 'sakura' | 'neon'
+
+ // 主题配色表
+ const THEME_COLORS: Record<ConfettiTheme, readonly string[]> = {
+   default: ['#0070f3', '#111111', '#f5f5f5', '#00d4ff', '#ff0080', '#ffbd00', '#7928ca', '#34d399'],
+   gold: ['#FFD700', '#FFA500', '#FF8C00', '#DAA520', '#B8860B', '#FFF8DC', '#FFE4B5', '#FFEFD5'],
+   ocean: ['#006994', '#00B4D8', '#48CAE4', '#90E0EF', '#023E8A', '#0077B6', '#ADE8F4', '#CAF0F8'],
+   sakura: ['#FFB7C5', '#FF69B4', '#FF1493', '#C71585', '#DB7093', '#FFF0F5', '#FFE4E1', '#FFC0CB'],
+   neon: ['#FF00FF', '#00FF00', '#FF3300', '#00FFFF', '#FFFF00', '#FF00AA', '#00FF88', '#FF6600'],
+ }
+
+ // 强度系数表：粒子数量倍率
+ const INTENSITY_MULTIPLIER: Record<ConfettiIntensity, number> = {
+   small: 0.4,
+   medium: 1,
+   large: 2,
+   epic: 3.5,
+ }
 
  // 重力加速度（px/秒²）：数值越大粒子下落越快
  const GRAVITY = 880
@@ -99,7 +119,7 @@
 
  // 生成 count 个初始粒子：全部从爆发区域顶部附近“喷出”，
  // 初始速度方向大致朝上（-π/2 为绝对向上）并在左右 ±1.15 弧度内散开。
- function spawnParticles(rect: BurstRect, count: number, random: () => number): Particle[] {
+ function spawnParticles(rect: BurstRect, count: number, random: () => number, colors: readonly string[]): Particle[] {
  
    const originX = rect.width / 2 // 爆发原点：水平方向取区域中线
    const originY = Math.max(rect.height * 0.25, 88) // 垂直方向取高度 1/4 处，至少 88px 避免过矮区域贴顶
@@ -112,7 +132,7 @@
      const round = random() < 0.28 // 约 28% 概率生成圆形碎片，其余为长条纸屑
      particles.push({
        round,
-       color: COLORS[Math.floor(random() * COLORS.length)],
+       color: colors[Math.floor(random() * colors.length)],
        width: round ? randomBetween(random, 4, 7) : randomBetween(random, 5, 9),
        height: round ? randomBetween(random, 4, 7) : randomBetween(random, 12, 20),
        maxLife: randomBetween(random, 1.6, 2.4),
@@ -133,13 +153,16 @@
 
  // 在指定区域内播放一场彩带爆炸特效。
  // @param rect    爆发区域（视口坐标，像素）
- // @param options 可选参数：count 为粒子数量（默认 180）；其余为时钟/随机数的注入实现（测试用）
+ // @param options 可选参数：count 为粒子数量（默认 180）；intensity 控制规模；theme 控制配色
  // @returns 清理函数：调用后立即终止动画并移除画布元素
  export function runConfettiBurst(
    rect: BurstRect,
-   options: Partial<BurstClock> & { count?: number } = {},
+   options: Partial<BurstClock> & { count?: number; intensity?: ConfettiIntensity; theme?: ConfettiTheme } = {},
  ): () => void {
-   const count = options.count ?? 180
+   const intensity = options.intensity ?? 'medium'
+   const theme = options.theme ?? 'default'
+   const baseCount = options.count ?? 180
+   const count = Math.round(baseCount * INTENSITY_MULTIPLIER[intensity])
    // 组装时钟：未注入的字段回退到浏览器默认实现（Math.random / performance.now / rAF）
    const clock: BurstClock = {
      random: options.random ?? Math.random,
@@ -175,7 +198,7 @@
    if (context === null) return disposeImmediately
    document.body.appendChild(canvas)
 
-   const particles = spawnParticles(rect, count, clock.random as () => number)
+   const particles = spawnParticles(rect, count, clock.random as () => number, THEME_COLORS[theme])
    let running = true // 动画是否仍在运行
    let frameId = 0 // 当前待执行的 rAF 帧 id
    let lastTime: number | undefined // 上一帧的时间戳（毫秒），用于计算帧间隔 dt

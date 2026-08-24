@@ -28,6 +28,17 @@ export interface PublicCard {
   items: PublicItem[]
 }
 
+export interface WrongWordEntry {
+  itemId: string
+  cardId: string
+  text: string
+  meaning: string
+  example: string
+  wrongCount: number
+  lastWrongAt: number
+  addedAt: number
+}
+
 export interface PublicState {
   cards: PublicCard[]
   currentCardId: string | null
@@ -37,6 +48,10 @@ export interface PublicState {
   totalCompleted: number
   statistics: { answers: number; correct: number; wrong: number; xp: number }
   badge: { tier: number; name: string; next: number }
+  frequency: string
+  dailyQuizLimit: number
+  quizzesToday: number
+  quizzesDate: string
 }
 
 export interface QuizQuestion {
@@ -109,4 +124,12 @@ export const englishApi = {
     post('/cards/update', { cardId, ...patch }),
   deleteCard: (cardId: string): Promise<{ ok: boolean; state: PublicState }> => post('/cards/delete', { cardId }),
   reset: (): Promise<{ ok: boolean; state: PublicState }> => post('/reset'),
+  // Wrong word notebook
+  wrongWords: (): Promise<{ ok: boolean; wrongWords: WrongWordEntry[] }> => get('/wrong-words'),
+  clearWrongWords: (): Promise<{ ok: boolean; state: PublicState }> => post('/wrong-words/clear'),
+  removeWrongWord: (itemId: string): Promise<{ ok: boolean; state: PublicState }> => post('/wrong-words/remove', { itemId }),
+  // Frequency settings
+  setFrequency: (frequency: string, dailyQuizLimit?: number): Promise<{ ok: boolean; state: PublicState }> => post('/frequency', { frequency, dailyQuizLimit }),
+  // Dashboard
+  dashboard: (): Promise<{ ok: boolean; xp: number; streak: number; totalCompleted: number; totalWrong: number; totalCards: number; masteredCards: number; statistics: { answers: number; correct: number; wrong: number; xp: number }; day: { date: string; hearts: number; completedToday: number; correctToday: number; wrongToday: number } }> => get('/dashboard'),
 }

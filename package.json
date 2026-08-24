@@ -1,6 +1,6 @@
  {
    "name": "bga-dsh-workbench",
-   "version": "0.0.8",
+   "version": "0.0.9",
    "description": "Personal Harness workbench: hero banner, completed-turn confetti, and a built-in task board",
    "license": "MIT",
    "type": "module",

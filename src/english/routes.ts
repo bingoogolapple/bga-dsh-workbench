@@ -350,6 +350,60 @@ export function createEnglishRoutes(options: {
       await save(dir, fresh)
       sendJson(res, OK({ state: publicState(fresh) }))
     } },
+    // GET /wrong-words — return the wrong word notebook.
+    { kind: 'exact', path: `${base}/wrong-words`, handler: async (_req, res) => {
+      const state = await current()
+      sendJson(res, OK({ wrongWords: state.wrongWords ?? [] }))
+    } },
+    // POST /wrong-words/clear — clear the wrong word notebook.
+    { kind: 'exact', path: `${base}/wrong-words/clear`, handler: async (_req, res) => {
+      const state = await current()
+      state.wrongWords = []
+      await save(dir, state)
+      sendJson(res, OK({ state: publicState(state) }))
+    } },
+    // POST /wrong-words/remove — remove a specific wrong word.
+    { kind: 'exact', path: `${base}/wrong-words/remove`, handler: async (req, res) => {
+      try {
+        const body = await readJson(req, 4096) as { itemId?: string }
+        if (!body?.itemId) return sendError(res, 'itemId required')
+        const state = await current()
+        state.wrongWords = (state.wrongWords ?? []).filter(w => w.itemId !== body.itemId)
+        await save(dir, state)
+        sendJson(res, OK({ state: publicState(state) }))
+      } catch { sendError(res, 'invalid request') }
+    } },
+    // POST /frequency — update learning frequency settings.
+    { kind: 'exact', path: `${base}/frequency`, handler: async (req, res) => {
+      try {
+        const body = await readJson(req, 4096) as { frequency?: string; dailyQuizLimit?: number }
+        const state = await current()
+        if (body.frequency) state.frequency = body.frequency as EnglishState['frequency']
+        if (typeof body.dailyQuizLimit === 'number') state.dailyQuizLimit = Math.max(0, Math.min(50, body.dailyQuizLimit))
+        await save(dir, state)
+        sendJson(res, OK({ state: publicState(state) }))
+      } catch { sendError(res, 'invalid request') }
+    } },
+    // GET /dashboard — return dashboard stats for the learning report.
+    { kind: 'exact', path: `${base}/dashboard`, handler: async (_req, res) => {
+      const state = await current()
+      const totalWrong = (state.wrongWords ?? []).length
+      const totalCards = state.cards.length
+      const masteredCards = state.cards.filter(c => {
+        const mastered = c.items.filter(i => i.status === 'mastered')
+        return mastered.length === c.items.length && c.items.length > 0
+      }).length
+      sendJson(res, OK({
+        xp: state.xp,
+        streak: state.streak,
+        totalCompleted: state.totalCompleted,
+        totalWrong,
+        totalCards,
+        masteredCards,
+        statistics: state.statistics,
+        day: state.day,
+      }))
+    } },
   ]
 }
 

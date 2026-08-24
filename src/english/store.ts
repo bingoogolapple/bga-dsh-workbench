@@ -38,6 +38,13 @@ export async function loadEnglishState(storageDir: string): Promise<EnglishState
     if (parsed.statistics && typeof parsed.statistics === 'object') {
       def.statistics = { ...def.statistics, ...(parsed.statistics as EnglishState['statistics']) }
     }
+    // Load wrong word notebook
+    if (Array.isArray(parsed.wrongWords)) def.wrongWords = parsed.wrongWords as EnglishState['wrongWords']
+    // Load frequency settings
+    if (typeof parsed.frequency === 'string') def.frequency = parsed.frequency as EnglishState['frequency']
+    if (typeof parsed.dailyQuizLimit === 'number') def.dailyQuizLimit = parsed.dailyQuizLimit
+    if (typeof parsed.quizzesToday === 'number') def.quizzesToday = parsed.quizzesToday
+    if (typeof parsed.quizzesDate === 'string') def.quizzesDate = parsed.quizzesDate
     // Ensure the built-in Basic English 850 card exists and is locked.
     ensureBasicEnglish850(def)
     return def

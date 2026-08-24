@@ -36,7 +36,22 @@
  export interface ConfettiConfig {
    /** 是否播放庆祝音效 */
    readonly sound: boolean
+   /** 彩带配色主题 */
+   readonly theme: ConfettiTheme
+   /** 彩带强度 */
+   readonly intensity: ConfettiIntensity
+   /** 触发时机 */
+   readonly trigger: ConfettiTrigger
  }
+
+ /** 彩带配色主题 */
+ export type ConfettiTheme = 'default' | 'gold' | 'ocean' | 'sakura' | 'neon'
+
+ /** 彩带强度 */
+ export type ConfettiIntensity = 'small' | 'medium' | 'large' | 'epic'
+
+ /** 彩带触发时机 */
+ export type ConfettiTrigger = 'success' | 'every' | 'task'
 
  /** 「打开方式」配置（设置页下拉当前选中的偏好 ID，供界面回显） */
  export interface OpenConfig {
@@ -306,7 +321,7 @@ export interface ExtraOpenSettingsPatch {
            // 逐字段校验类型并构造合法的更新补丁；任何非法字段都抛错走 400 分支
            const patch: {
              banner?: { avatarPath?: string; text?: string; show?: boolean }
-             confetti?: { show?: boolean; sound?: boolean }
+             confetti?: { show?: boolean; sound?: boolean; theme?: ConfettiTheme; intensity?: ConfettiIntensity; trigger?: ConfettiTrigger }
              english?: { enabled?: boolean }
               openExtra?: Record<string, boolean>
               open?: { terminal?: string; editor?: string }
@@ -336,10 +351,31 @@ export interface ExtraOpenSettingsPatch {
                throw new Error('confetti must be an object')
              }
              const fields = confetti as Record<string, unknown>
-             const item: { sound?: boolean } = {}
+             const item: { sound?: boolean; theme?: ConfettiTheme; intensity?: ConfettiIntensity; trigger?: ConfettiTrigger } = {}
              if (fields.sound !== undefined) {
                if (typeof fields.sound !== 'boolean') throw new Error('confetti.sound must be a boolean')
                item.sound = fields.sound
+             }
+             if (fields.theme !== undefined) {
+               const allowed = ['default', 'gold', 'ocean', 'sakura', 'neon']
+               if (typeof fields.theme !== 'string' || !allowed.includes(fields.theme)) {
+                 throw new Error('confetti.theme must be one of default|gold|ocean|sakura|neon')
+               }
+               item.theme = fields.theme as ConfettiTheme
+             }
+             if (fields.intensity !== undefined) {
+               const allowed = ['small', 'medium', 'large', 'epic']
+               if (typeof fields.intensity !== 'string' || !allowed.includes(fields.intensity)) {
+                 throw new Error('confetti.intensity must be one of small|medium|large|epic')
+               }
+               item.intensity = fields.intensity as ConfettiIntensity
+             }
+             if (fields.trigger !== undefined) {
+               const allowed = ['success', 'every', 'task']
+               if (typeof fields.trigger !== 'string' || !allowed.includes(fields.trigger)) {
+                 throw new Error('confetti.trigger must be one of success|every|task')
+               }
+               item.trigger = fields.trigger as ConfettiTrigger
              }
              patch.confetti = item
            }

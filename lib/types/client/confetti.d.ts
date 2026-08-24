@@ -18,6 +18,10 @@ export interface BurstClock {
     /** 随机数发生器（默认 Math.random）；注入固定实现可获得可复现的动画 */
     random?: () => number;
 }
+export type ConfettiIntensity = 'small' | 'medium' | 'large' | 'epic';
+export type ConfettiTheme = 'default' | 'gold' | 'ocean' | 'sakura' | 'neon';
 export declare function runConfettiBurst(rect: BurstRect, options?: Partial<BurstClock> & {
     count?: number;
+    intensity?: ConfettiIntensity;
+    theme?: ConfettiTheme;
 }): () => void;

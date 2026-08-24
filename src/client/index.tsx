@@ -18,7 +18,7 @@
  import { WorkbenchBanner } from './Banner.tsx'
  import { ConfettiLayer } from './ConfettiLayer.tsx'
 import { EnglishLearningLayer } from './english/EnglishLearningLayer.tsx'
- import { SettingsSection, type WorkbenchSectionInjected, type WorkbenchSectionState, type OpenPrefsSectionState } from './SettingsSection.tsx'
+ import { SettingsSection, type WorkbenchSectionInjected, type WorkbenchSectionState, type OpenPrefsSectionState, type ConfettiSectionState } from './SettingsSection.tsx'
  import { applyTaskBoard } from './task-board-apply.ts'
  import { mountWorkspaceOpenMenu } from './workspace-open.ts'
  
@@ -85,14 +85,14 @@ import { EnglishLearningLayer } from './english/EnglishLearningLayer.tsx'
      inject: (): WorkbenchSectionInjected => ({
        // 读取当前配置：请求 /config 并做逐字段类型校验，
        // 类型不符或缺省的字段回退到默认值，避免后端数据结构变化导致前端崩溃。
-       load: async (): Promise<WorkbenchSectionState & { sound: boolean } & OpenPrefsSectionState> => {
+       load: async (): Promise<WorkbenchSectionState & ConfettiSectionState & OpenPrefsSectionState> => {
          const response = await fetch(CONFIG_URL, { cache: 'no-store' }) // no-store：实时拉取，不命中缓存
          if (!response.ok) throw apiFailure(response.status, '读取设置')
          
          
           const value = await response.json() as {
            banner?: Partial<WorkbenchSectionState>
-           confetti?: { sound?: unknown }
+           confetti?: { sound?: unknown; theme?: unknown; intensity?: unknown; trigger?: unknown }
             open?: { terminal?: unknown; editor?: unknown }
             openExtra?: { androidStudio?: unknown; xcode?: unknown; wechatDevtools?: unknown; intellijIdea?: unknown; devecoStudio?: unknown; webstorm?: unknown; pycharm?: unknown; goland?: unknown }
           }
@@ -102,6 +102,18 @@ import { EnglishLearningLayer } from './english/EnglishLearningLayer.tsx'
            text: typeof banner.text === 'string' ? banner.text : '',
            show: typeof banner.show === 'boolean' ? banner.show : true,
            sound: typeof value.confetti?.sound === 'boolean' ? value.confetti.sound : true,
+           theme: (typeof value.confetti?.theme === 'string'
+             && ['default', 'gold', 'ocean', 'sakura', 'neon'].includes(value.confetti.theme as string)
+             ? (value.confetti.theme as 'default' | 'gold' | 'ocean' | 'sakura' | 'neon')
+             : 'default'),
+           intensity: (typeof value.confetti?.intensity === 'string'
+             && ['small', 'medium', 'large', 'epic'].includes(value.confetti.intensity as string)
+             ? (value.confetti.intensity as 'small' | 'medium' | 'large' | 'epic')
+             : 'large'),
+           trigger: (typeof value.confetti?.trigger === 'string'
+             && ['success', 'every', 'task'].includes(value.confetti.trigger as string)
+             ? (value.confetti.trigger as 'success' | 'every' | 'task')
+             : 'success'),
             terminal: typeof value.open?.terminal === 'string' ? value.open.terminal : '',
             editor: typeof value.open?.editor === 'string' ? value.open.editor : '',
             openExtra: {

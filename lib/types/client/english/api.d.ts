@@ -29,6 +29,16 @@ export interface PublicCard {
     };
     items: PublicItem[];
 }
+export interface WrongWordEntry {
+    itemId: string;
+    cardId: string;
+    text: string;
+    meaning: string;
+    example: string;
+    wrongCount: number;
+    lastWrongAt: number;
+    addedAt: number;
+}
 export interface PublicState {
     cards: PublicCard[];
     currentCardId: string | null;
@@ -53,6 +63,10 @@ export interface PublicState {
         name: string;
         next: number;
     };
+    frequency: string;
+    dailyQuizLimit: number;
+    quizzesToday: number;
+    quizzesDate: string;
 }
 export interface QuizQuestion {
     itemId: string;
@@ -186,5 +200,43 @@ export declare const englishApi: {
     reset: () => Promise<{
         ok: boolean;
         state: PublicState;
+    }>;
+    wrongWords: () => Promise<{
+        ok: boolean;
+        wrongWords: WrongWordEntry[];
+    }>;
+    clearWrongWords: () => Promise<{
+        ok: boolean;
+        state: PublicState;
+    }>;
+    removeWrongWord: (itemId: string) => Promise<{
+        ok: boolean;
+        state: PublicState;
+    }>;
+    setFrequency: (frequency: string, dailyQuizLimit?: number) => Promise<{
+        ok: boolean;
+        state: PublicState;
+    }>;
+    dashboard: () => Promise<{
+        ok: boolean;
+        xp: number;
+        streak: number;
+        totalCompleted: number;
+        totalWrong: number;
+        totalCards: number;
+        masteredCards: number;
+        statistics: {
+            answers: number;
+            correct: number;
+            wrong: number;
+            xp: number;
+        };
+        day: {
+            date: string;
+            hearts: number;
+            completedToday: number;
+            correctToday: number;
+            wrongToday: number;
+        };
     }>;
 };

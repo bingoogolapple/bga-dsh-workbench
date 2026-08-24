@@ -83,6 +83,12 @@ export function EnglishLearningLayer(): JSX.Element | null {
   const busyRef = useRef(false)
   const enabledRef = useRef(true)
   const targetLangRef = useRef('en')
+  // Frequency control: track turns since last quiz
+  const turnsSinceQuizRef = useRef(0)
+  const frequencyRef = useRef<string>('every-turn')
+  const dailyLimitRef = useRef(10)
+  const quizzesTodayRef = useRef(0)
+  const quizzesDateRef = useRef('')
 
   // 读取英语学习总开关；关闭时不弹出答题卡。
   useEffect(() => {
@@ -119,7 +125,14 @@ export function EnglishLearningLayer(): JSX.Element | null {
         // reason 'no-card': silently ignore (nothing configured).
       }
       // Refresh gamification state for display (best effort).
-      englishApi.state().then(r => setState(r.state)).catch(() => { })
+      englishApi.state().then(r => {
+        setState(r.state)
+        // Update frequency control refs from state
+        if (r.state.frequency) frequencyRef.current = r.state.frequency
+        if (typeof r.state.dailyQuizLimit === 'number') dailyLimitRef.current = r.state.dailyQuizLimit
+        if (typeof r.state.quizzesToday === 'number') quizzesTodayRef.current = r.state.quizzesToday
+        if (r.state.quizzesDate) quizzesDateRef.current = r.state.quizzesDate
+      }).catch(() => { })
     } catch {
       // network / host unavailable: ignore
     } finally {
@@ -149,6 +162,22 @@ export function EnglishLearningLayer(): JSX.Element | null {
       if (!enabledRef.current) return
       // session 进行中由 auto-close timer 驱动下一题，不响应外部事件。
       if (sessionCountRef.current > 0) return
+      // Frequency control: increment turn counter and check if we should show quiz
+      turnsSinceQuizRef.current += 1
+      const freq = frequencyRef.current
+      if (freq === 'manual') return
+      // Check daily limit
+      const today = new Date().toISOString().slice(0, 10)
+      if (quizzesDateRef.current !== today) {
+        quizzesDateRef.current = today
+        quizzesTodayRef.current = 0
+      }
+      if (dailyLimitRef.current > 0 && quizzesTodayRef.current >= dailyLimitRef.current) return
+      // Check frequency threshold
+      const threshold = freq === 'every-2' ? 2 : freq === 'every-5' ? 5 : freq === 'every-10' ? 10 : 1
+      if (turnsSinceQuizRef.current < threshold) return
+      turnsSinceQuizRef.current = 0
+      quizzesTodayRef.current += 1
       void challenge()
     }
     window.addEventListener(TURN_COMPLETE_EVENT, handler)

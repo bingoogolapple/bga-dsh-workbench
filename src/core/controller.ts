@@ -411,6 +411,10 @@ import {
        ? settleExecution(task, event.executionId, event.outcome, this.now(), event.error)
        : task)
      this.persistAndNotify()
+     // 广播任务执行完成事件：供彩带特效层等监听方响应
+     if (typeof window !== 'undefined') {
+       window.dispatchEvent(new CustomEvent('bga-dsh-workbench:task-execution', { detail: { outcome: event.outcome, taskId: event.taskId } }))
+     }
    }
 
    /**
