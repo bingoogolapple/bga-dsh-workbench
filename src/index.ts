@@ -55,7 +55,7 @@ import { registerTaskBoardPrompt } from './task-board-host.ts'
    text: z.string().default('的专属 Harness 工作台'),
    show: z.boolean().default(true),
    sound: z.boolean().default(true),
-   storageDir: z.string(),
+   storageDir: z.string().default(defaultStorageDir()),
  })
 
  /** 横幅问候语的默认文本 */

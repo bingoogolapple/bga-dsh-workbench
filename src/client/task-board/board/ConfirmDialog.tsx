@@ -7,9 +7,10 @@
  * - 点击遮罩本身（target === currentTarget）也触发取消；
  * - 通过 createPortal 之外的普通渲染（由调用方决定挂载位置）。
  */
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { t } from '../locales.ts'
 import css from '../kanban.module.css'
+import { useDialogFocus } from './useDialogFocus.ts'
 
 /**
  * 确认对话框的 props。
@@ -34,6 +35,9 @@ export interface ConfirmDialogProps {
  * 确认对话框组件。
  */
 export function ConfirmDialog({ title, message, confirmLabel, danger, onCancel, onConfirm }: ConfirmDialogProps) {
+  // 对话框容器 ref：用于焦点管理（初始聚焦 + focus trap）。
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useDialogFocus(dialogRef)
   // 让当前聚焦元素失焦：关闭对话框后避免残留的聚焦态/键盘焦点。
   const blurActive = (): void => {
     const el = document.activeElement
@@ -54,7 +58,7 @@ export function ConfirmDialog({ title, message, confirmLabel, danger, onCancel, 
   return (
     // 遮罩：只有点击遮罩本身（而非对话框内部）时才取消。
     <div className={css["bga-kb-modal-bg"]} onMouseDown={event => { if (event.target === event.currentTarget) onCancel() }}>
-      <div className={css["bga-kb-modal-sm"]} role="alertdialog" aria-label={title}>
+      <div ref={dialogRef} className={css["bga-kb-modal-sm"]} role="alertdialog" aria-label={title}>
         <h2 className={css["bga-kb-modal-title"]}>{title}</h2>
         <p className={css["bga-kb-modal-msg"]}>{message}</p>
         <footer className={css["bga-kb-modal-foot"]}>

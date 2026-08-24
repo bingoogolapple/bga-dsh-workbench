@@ -18,9 +18,13 @@ import { COLUMNS, type TaskRecord, type TaskStatus } from '../../../core/tasks.t
 import { t, type TaskBoardKey } from '../locales.ts'
 import css from '../kanban.module.css'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
+import { MatrixView } from './MatrixView.tsx'
 import { NewTaskModal } from './NewTaskModal.tsx'
 import { TaskCard } from './TaskCard.tsx'
 import { TaskDetail } from './TaskDetail.tsx'
+
+/** 工作台视图：周矩阵（默认，三合一主视图） / 五列看板（执行流水线） */
+export type WorkbenchView = 'matrix' | 'board'
 
 // 任务状态 -> 列标题文案 key 的映射（渲染各列标题用）。
 const STATUS_KEY: Record<TaskStatus, TaskBoardKey> = {
@@ -59,13 +63,15 @@ const MemoTaskCard = memo(function MemoTaskCard({ task, onOpen, onDelete }: { ta
  * @param props.embedded 是否处于内嵌模式（隐藏「返回对话」按钮）。
  */
 export function TaskBoard({ controller, embedded = false }: { controller: BoardController; embedded?: boolean }) {
-  // 订阅控制器快照：任务/打开状态/归档视图等变化都会重渲染看板。
+  // 订阅控制器快照：任务/打开状态/归档视图等变化都会重渲染工作台。
   const [snapshot, setSnapshot] = useState(controller.getSnapshot())
   useEffect(
     () => controller.subscribe(() => setSnapshot(controller.getSnapshot())),
     [controller],
   )
   // —— 本地 UI 状态 ——
+  // 当前视图：周矩阵（全屏工作台默认，三合一主视图） / 五列看板（嵌入式默认，执行流水线）。
+  const [view, setView] = useState<WorkbenchView>(embedded ? 'board' : 'matrix')
   // 筛选词。
   const [filter, setFilter] = useState('')
   // 快速添加输入框的文本。
@@ -96,13 +102,48 @@ export function TaskBoard({ controller, embedded = false }: { controller: BoardC
   const quickAdd = useCallback((): void => {
     const title = quick.trim()
     if (title === '') return
-    controller.createTask({ title, description: '', prompt: '' })
+    controller.createTask({ title, description: '', prompt: '', kind: 'todo' })
     setQuick('')
   }, [quick, controller])
 
   return (
     <div className={css["bga-kb-board"]} data-bga-kb-root="">
-      {/* 顶部工具区：搜索 / 归档切换 / 新建 / 返回对话 / 快速添加 */}
+      {/* 顶部视图切换条：周矩阵 / 看板 +（非内嵌时）返回对话 */}
+      <div className={css["bga-kb-viewbar"]}>
+        <div className={css["bga-kb-viewbar-tabs"]}>
+          <button
+            type="button"
+            className={view === 'matrix' ? css["bga-kb-btn-primary"] : css["bga-kb-btn-ghost"]}
+            onClick={() => { setView('matrix') }}
+          >
+            {t('board.view.matrix')}
+          </button>
+          <button
+            type="button"
+            className={view === 'board' ? css["bga-kb-btn-primary"] : css["bga-kb-btn-ghost"]}
+            onClick={() => { setView('board') }}
+          >
+            {t('board.view.board')}
+          </button>
+        </div>
+        {!embedded && (
+          <button
+            type="button"
+            className={css["bga-kb-btn-ghost"]}
+            onClick={() => { controller.closeBoard() }}
+          >
+            {t('board.close')}
+          </button>
+        )}
+      </div>
+
+      {/* —— 周矩阵视图（默认主视图：分类 × 周一~周日） —— */}
+      {view === 'matrix' ? (
+        <MatrixView controller={controller} />
+      ) : (
+      /* —— 五列看板视图（执行流水线 + 归档） —— */
+      <>
+      {/* 顶部工具区：搜索 / 归档切换 / 新建 / 快速添加 */}
       <header className={css["bga-kb-board-header"]}>
         {/* 按标题/描述筛选任务 */}
         <input
@@ -131,16 +172,6 @@ export function TaskBoard({ controller, embedded = false }: { controller: BoardC
         >
           + {t('board.new')}
         </button>
-        {/* 非内嵌模式提供「返回对话」按钮（关闭全屏看板） */}
-        {!embedded && (
-          <button
-            type="button"
-            className={css["bga-kb-btn-ghost"]}
-            onClick={() => { controller.closeBoard() }}
-          >
-            {t('board.close')}
-          </button>
-        )}
         {/* 快速添加：输入后按 Enter 直接创建待办任务 */}
         <input
           className={css["bga-kb-quick"]}
@@ -221,6 +252,8 @@ export function TaskBoard({ controller, embedded = false }: { controller: BoardC
           }}
         />,
         document.body,
+      )}
+      </>
       )}
     </div>
   )

@@ -74,6 +74,7 @@ html[data-bga-kb-open] [class*='centerCol'] > :not([data-bga-kb-view]) {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  width: 100%;
   height: 100%;
   min-width: 0;
   min-height: 0;
@@ -89,6 +90,21 @@ html[data-bga-kb-open] [class*='centerCol'] > :not([data-bga-kb-view]) {
   align-items: center;
   gap: 10px;
   flex: none;
+}
+
+/* 视图切换条：周矩阵 / 看板 + 返回对话 */
+.bga-kb-viewbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex: none;
+}
+
+.bga-kb-viewbar-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .bga-kb-search {
@@ -242,6 +258,15 @@ html[data-bga-kb-open] [class*='centerCol'] > :not([data-bga-kb-view]) {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  /* button reset：标题改为真正的按钮，去掉浏览器默认外观 */
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .bga-kb-card-delete {
@@ -506,6 +531,16 @@ html[data-bga-kb-open] [class*='centerCol'] > :not([data-bga-kb-view]) {
   gap: 5px;
 }
 
+/* 新建弹窗双列字段行（分类/日期、优先级/形态） */
+.bga-kb-fld-row {
+  display: flex;
+  gap: 10px;
+}
+
+.bga-kb-fld-row .bga-kb-fld {
+  flex: 1;
+}
+
 .bga-kb-fld-label {
   font-size: 12px;
   font-weight: 600;
@@ -594,7 +629,7 @@ html[data-bga-kb-open] [class*='centerCol'] > :not([data-bga-kb-view]) {
   align-items: center;
   gap: 10px;
   padding: 14px 18px;
-  border-bottom: 1px solid var(--dsw-alias-separator-primary);
+  border-bottom: 1px solid var(--dsw-alias-border-l1);
   flex: none;
 }
 
@@ -798,7 +833,7 @@ html[data-bga-kb-open] [class*='centerCol'] > :not([data-bga-kb-view]) {
   align-items: center;
   gap: 10px;
   padding: 12px 18px;
-  border-top: 1px solid var(--dsw-alias-separator-primary);
+  border-top: 1px solid var(--dsw-alias-border-l1);
   flex: none;
 }
 
@@ -809,7 +844,7 @@ html[data-bga-kb-open] [class*='centerCol'] > :not([data-bga-kb-view]) {
 }
 
 .bga-kb-entry:focus-visible,
-.bga-kb-card:focus-visible,
+.bga-kb-card-title:focus-visible,
 .bga-kb-card-delete:focus-visible,
 .bga-kb-btn-primary:focus-visible,
 .bga-kb-btn-ghost:focus-visible,
@@ -902,3 +937,16 @@ html[data-bga-kb-open] [class*='centerCol'] > :not([data-bga-kb-view]) {
     animation: none;
   }
 }
+
+/* 快捷句式按钮行（新建弹窗） */
+.bga-kb-phrase-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.bga-kb-phrase-list .bga-kb-btn-ghost {
+  padding: 3px 8px;
+  font-size: 12px;
+}
+

@@ -12,15 +12,16 @@
  * 组件通过「latest 状态快照 + task 同步」在任务被外部更新（如执行结果回流）
  * 时即时刷新详情内容。
  */
- import { useEffect, useState } from 'react'
+ import { useEffect, useRef, useState } from 'react'
  import { createPortal } from 'react-dom'
  import type { BoardController } from '../../../core/controller.ts'
  import { isValidCron } from '../../../core/schedule.ts'
- import { MANUAL_STATUSES, TASK_PERMISSIONS, type ExecutionRecord, type TaskPermission, type TaskRecord, type TaskStatus } from '../../../core/tasks.ts'
+ import { MANUAL_STATUSES, SUPPORT_STATUSES, TASK_PERMISSIONS, type ExecutionRecord, type TaskPermission, type TaskRecord, type TaskStatus, type SupportStatus } from '../../../core/tasks.ts'
  import { t, type TaskBoardKey } from '../locales.ts'
  import css from '../kanban.module.css'
  import { ConfirmDialog } from './ConfirmDialog.tsx'
  import { formatTime } from './TaskCard.tsx'
+ import { useDialogFocus } from './useDialogFocus.ts'
 
  // 执行结果（result）-> 结果文案 key 的映射（result 非空时使用）。
  const RESULT_KEY: Record<NonNullable<ExecutionRecord['result']>, TaskBoardKey> = {
@@ -29,7 +30,14 @@
    cancelled: 'detail.result.cancelled',
  }
 
- // 任务状态 -> 状态文案 key 的映射（状态徽标用）。
+// 「期望支持」闭环状态 -> 展示文案 key（渲染时再 t() 求值，支持语言切换）
+const SUPPORT_LABEL_KEY: Record<SupportStatus, TaskBoardKey> = {
+  pending: 'matrix.support.pending',
+  processing: 'matrix.support.processing',
+  resolved: 'matrix.support.resolved',
+}
+
+// 「期望支持」闭环状态 -> 展示文案
  const STATUS_KEY: Record<TaskStatus, TaskBoardKey> = {
    backlog: 'board.status.backlog',
    todo: 'board.status.todo',
@@ -190,14 +198,17 @@
    const [lastTriggeredAt, setLastTriggeredAt] = useState<number | undefined>(schedule?.lastTriggeredAt)
    const [error, setError] = useState<string | undefined>(undefined)
 
-   // 任务快照变化（外部保存/计算回流）时，把本地编辑状态与任务保持同步。
+   // cron/enabled 草稿只在任务本身或定时规则变化时同步（避免「下次运行/上次触发」回流时冲掉正在编辑但未保存的 cron）
    useEffect(() => {
      setCron(schedule?.cron ?? '0 9 * * *')
      setEnabled(schedule?.enabled ?? false)
+     setError(undefined)
+   }, [task.id, schedule?.cron, schedule?.enabled])
+   // 「下次运行/上次触发」是展示值，其回流单独同步，不干扰 cron 草稿
+   useEffect(() => {
      setNextRunAt(schedule?.nextRunAt)
      setLastTriggeredAt(schedule?.lastTriggeredAt)
-     setError(undefined)
-   }, [task.id, schedule?.enabled, schedule?.cron, schedule?.nextRunAt, schedule?.lastTriggeredAt])
+   }, [schedule?.nextRunAt, schedule?.lastTriggeredAt])
 
    // 保存 cron：去空白后校验（非空且 isValidCron），合法才写入任务。
    const saveCron = (value: string): void => {
@@ -426,6 +437,9 @@
  * @param props.task 当前任务对象（受控输入）。
  */
  export function TaskDetail({ controller, task }: { controller: BoardController; task: TaskRecord }) {
+   // 对话框容器 ref：焦点管理（初始聚焦 + focus trap）。
+   const dialogRef = useRef<HTMLDivElement>(null)
+   useDialogFocus(dialogRef)
    // 是否显示删除确认框。
    const [confirmDelete, setConfirmDelete] = useState(false)
   // 让当前聚焦元素失焦（关闭后清除残留焦点）。
@@ -438,8 +452,8 @@
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape' && !confirmDelete) {
-        controller.closeTask()
         blurActive()
+        controller.closeTask()
       }
     }
     document.addEventListener('keydown', onKeyDown)
@@ -456,14 +470,14 @@
    // 用 createPortal 把详情渲染到 document.body，避免被看板定位上下文裁剪/遮蔽。
    return createPortal(
      // 遮罩：点击遮罩本身（而非详情面板）即关闭。
-     <div className={css["bga-kb-modal-bg"]} onMouseDown={event => { if (event.target === event.currentTarget) controller.closeTask() }}>
-       <div className={css["bga-kb-det"]} role="dialog" aria-label={t('detail.title')}>
+     <div className={css["bga-kb-modal-bg"]} onMouseDown={event => { if (event.target === event.currentTarget) { blurActive(); controller.closeTask() } }}>
+       <div ref={dialogRef} className={css["bga-kb-det"]} role="dialog" aria-label={t('detail.title')}>
          {/* 右上角关闭按钮 */}
          <button
            type="button"
            className={css["bga-kb-det-close"]}
            aria-label={t('detail.close')}
-           onClick={() => { controller.closeTask() }}
+           onClick={() => { blurActive(); controller.closeTask() }}
          >
            ×
          </button>
@@ -518,8 +532,28 @@
                  </button>
                ))}
              </div>
-           </section>
-         </div>
+          </section>
+
+          {/* 「期望支持」闭环：support 类任务可推进状态（待响应→处理中→已解决→待响应） */}
+          {current.category === 'support' && (
+            <section className={css["bga-kb-det-section"]}>
+              <h4>{t('matrix.support.advance')}</h4>
+              <div className={css["bga-kb-move"]}>
+                {SUPPORT_STATUSES.map(status => (
+                  <button
+                    key={status}
+                    type="button"
+                    className={css["bga-kb-btn-ghost"]}
+                    disabled={(current.supportStatus ?? 'pending') === status}
+                    onClick={() => { controller.updateTask(current.id, { supportStatus: status }) }}
+                  >
+                    {t(SUPPORT_LABEL_KEY[status])}
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
 
          <footer className={css["bga-kb-det-foot"]}>
            <button
@@ -528,6 +562,7 @@
              disabled={running}
              onClick={() => {
 
+               blurActive()
                controller.closeTask()
                void controller.rerunTask(current.id)
              }}
@@ -541,6 +576,7 @@
                className={css["bga-kb-btn-primary"]}
                onClick={() => {
                  controller.restoreTask(current.id)
+                 blurActive()
                  controller.closeTask()
                }}
              >
@@ -553,6 +589,7 @@
                  className={css["bga-kb-btn-ghost"]}
                  onClick={() => {
                    controller.archiveTask(current.id)
+                   blurActive()
                    controller.closeTask()
                  }}
                >
@@ -587,6 +624,7 @@
            onConfirm={() => {
              setConfirmDelete(false)
              controller.deleteTask(current.id)
+             blurActive()
              controller.closeTask()
            }}
          />

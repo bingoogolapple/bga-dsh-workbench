@@ -6,6 +6,7 @@
  * 注意：这里使用同步 XHR，避免在事件回调/控制器流程中引入异步状态复杂度。
  */
  import type { TaskRecord } from './tasks.ts'
+ import { isTaskRecord } from './tasks.ts'
  import type { TaskStore } from './store.ts'
 
  /** 宿主持久化端点 */
@@ -22,7 +23,8 @@
        xhr.send()
        if (xhr.status === 200) {
          const data = JSON.parse(xhr.responseText)
-         return Array.isArray(data) ? data : []
+         // 逐条过滤损坏/非法条目，避免脏数据在渲染时解引用崩溃
+         return Array.isArray(data) ? data.filter(isTaskRecord) : []
        }
      } catch {
        // 读取失败：返回空列表（不抛错，保证看板可用）

@@ -25,6 +25,7 @@
  import { ExecutionService } from '../core/execution.ts'
  import { SchedulerService } from '../core/scheduler.ts'
  import { FileTaskStore } from '../core/file-store.ts'
+ import { WorkbenchMetaStore } from '../core/workbench-meta-store.ts'
  
  import { claimTaskBoardApply, releaseTaskBoardApply } from './task-board/apply-guard.ts'
  import { mountBoard } from './task-board/board-mount.tsx'
@@ -105,6 +106,8 @@ import { mountBoardEmbed } from './task-board/embed-mount.tsx'
  
      // 任务存储：为每一个任务提供持久化能力（底层是宿主提供的写文件能力）
      const store = new FileTaskStore()
+     // 工作台元数据存储：日报「当日已完成」打卡（宿主 workbench-meta.json）
+     const metaStore = new WorkbenchMetaStore()
      // 执行服务：把运行时的话会/工作区/连接 API 适配成黑板的执行能力
      const exec = new ExecutionService({
        // 会话能力适配：登记列表查询与「按 id 绑定会话」的方式。
@@ -165,6 +168,7 @@ import { mountBoardEmbed } from './task-board/embed-mount.tsx'
      const controller = new BoardController({
        store,
        exec,
+       metaStore,
        sessions: {
          list: sessions.list,
          open: id => sessions.open(id as SessionId),

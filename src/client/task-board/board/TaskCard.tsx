@@ -1,8 +1,10 @@
 /**
  * TaskCard.tsx —— 看板列中的单张任务卡片。
  *
- * 以「按钮语义」渲染（role=button + tabIndex + 回车/空格激活）：
- * - 点击卡片打开任务详情；卡片右上角提供删除按钮（阻止冒泡，避免误触发打开）；
+ * 卡片以「可点击容器 + 标题按钮」语义渲染：
+ * - 点击卡片（标题或正文）打开任务详情；标题是真正的按钮，键盘回车可打开，
+ *   且不与删除按钮形成按钮嵌套；
+ * - 卡片右上角提供删除按钮（阻止冒泡，避免误触发打开）；
  * - 元信息行显示：更新时间、定时标记（schedule 启用时）、执行次数与最近结果
  *   （data-result 着色）、会话锚点、运行中 spinner；
  * - 最近一次执行仍在进行时会显示「进行中…」横条。
@@ -28,8 +30,8 @@ export function formatTime(ms: number): string {
   const now = Date.now()
   const minutes = Math.floor((now - ms) / 60000)
   if (minutes < 1) return t('time.justNow')
-  if (minutes < 60) return `${minutes}m`
-  if (minutes < 60 * 24) return `${Math.floor(minutes / 60)}h`
+  if (minutes < 60) return t('time.minutesAgo', { n: String(minutes) })
+  if (minutes < 60 * 24) return t('time.hoursAgo', { n: String(Math.floor(minutes / 60)) })
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
@@ -59,21 +61,19 @@ function TaskCardInner({ task, onClick, onDelete }: { task: TaskRecord; onClick:
     <div
       className={css["bga-kb-card"]}
       data-status={task.status}
-      // 卡片以按钮语义呈现：可 Tab 聚焦，回车 / 空格触发打开。
-      role="button"
-      tabIndex={0}
       onClick={onClick}
-      onKeyDown={event => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          onClick()
-        }
-      }}
       // 悬浮提示：有描述显示描述，否则显示标题。
       title={task.description !== '' ? task.description : task.title}
     >
       <span className={css["bga-kb-card-top"]}>
-        <span className={css["bga-kb-card-title"]}>{task.title}</span>
+        {/* 标题作为真正的按钮：可键盘聚焦回车打开，且不与删除按钮形成按钮嵌套 */}
+        <button
+          type="button"
+          className={css["bga-kb-card-title"]}
+          onClick={event => { event.stopPropagation(); onClick() }}
+        >
+          {task.title}
+        </button>
         {/* 删除按钮：阻止冒泡与默认行为，避免触发卡片的打开逻辑 */}
         <button
           type="button"

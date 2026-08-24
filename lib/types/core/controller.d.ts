@@ -10,6 +10,8 @@ import { ExecutionService } from './execution.ts';
 import type { TaskStore } from './store.ts';
 import { type NewTaskInput, type TaskRecord, type TaskStatus } from './tasks.ts';
 import { type TaskUpdatePatch } from './use-cases/task-update.ts';
+import { type CategoryDef, type WeekStart, type WorkbenchMeta } from './workbench-meta.ts';
+import type { WorkbenchMetaStore } from './workbench-meta-store.ts';
 /** 会话控制器门面：只暴露控制器需要的最小能力（当前会话快照 + 打开会话） */
 export interface SessionsControllerFace {
     list: {
@@ -28,6 +30,8 @@ export interface ControllerDeps {
     store: TaskStore;
     exec: ExecutionService;
     sessions: SessionsControllerFace;
+    /** 工作台元数据存储（可选：日报「当日已完成」打卡；缺省使用内存空元数据） */
+    metaStore?: WorkbenchMetaStore;
     /** 时钟（默认 Date.now） */
     now?: () => number;
     /** 生成执行/任务 ID（默认随机 UUID） */
@@ -64,6 +68,8 @@ export interface ControllerSnapshot {
     selectedTaskId: string | undefined;
     /** 新建/编辑任务时可选的执行目标 */
     executionOptions: ExecutionOptionsSnapshot;
+    /** 工作台元数据（日报「当日已完成」打卡等） */
+    meta: WorkbenchMeta;
 }
 /** 从快照中取出当前选中的任务 */
 export declare function selectedTaskOf(snapshot: ControllerSnapshot): TaskRecord | undefined;
@@ -80,6 +86,8 @@ export declare class BoardController {
     private selectedTaskId;
     /** 执行选项（工作区/预设列表），由外部推送 */
     private executionOptions;
+    /** 工作台元数据（日报「当日已完成」打卡），从 metaStore 加载 */
+    private meta;
     /** 状态订阅者集合 */
     private listeners;
     /** 生命周期清理函数集合（dispose 时逐一执行） */
@@ -102,6 +110,23 @@ export declare class BoardController {
     dispose(): void;
     /** 获取当前状态快照（React 组件渲染用） */
     getSnapshot(): ControllerSnapshot;
+    /** 切换某天「当日日报已完成」打卡（打卡/取消），返回切换后的状态 */
+    toggleDayDone(date: string): void;
+    /** 设置周起始日偏好（monday/sunday），持久化并通知 */
+    setWeekStart(weekStart: WeekStart): void;
+    /** 替换整张分类配置表（分类管理弹窗提交），持久化并通知 */
+    setCategories(categories: readonly CategoryDef[]): void;
+    /** 追加一个分类（id 冲突时忽略） */
+    addCategory(def: CategoryDef): void;
+    /** 删除一个分类（任务引用该分类时变为「未分类」显示） */
+    removeCategory(id: string): void;
+    /** 更新日报提醒配置（启用 + cron） */
+    setReminder(patch: {
+        enabled?: boolean;
+        cron?: string;
+    }): void;
+    /** 记录一次日报提醒触发（去重用），持久化 */
+    markReminderTriggered(): void;
     /** 订阅快照变化，返回取消订阅函数 */
     subscribe(fn: () => void): () => void;
     /**

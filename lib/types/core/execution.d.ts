@@ -157,7 +157,8 @@ export declare class ExecutionService {
      * - 会话已不存在 → 视为取消；
      * - 会话仍在运行 → 不处理；
      * - 会话有已结束轮次 → 按 lastAgentError 判定成败；
-     * - 否则回看历史尾部有无错误回合。
+     * - 否则回看历史尾部有无错误回合，有则判失败；
+     * - 两者皆无（会话空闲且从未结束过回合）→ 无法判定，留待后续调和。
      */
     reconcile(task: TaskRecord): Promise<ExecutionEvent | undefined>;
     /** 回看会话历史尾部是否存在「错误回合」事件（兜底判定失败） */

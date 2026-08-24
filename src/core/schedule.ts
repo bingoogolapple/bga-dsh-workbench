@@ -60,6 +60,24 @@
    }
  }
 
+ const MAX_MONTH_DAYS: ReadonlyArray<number> = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+ /**
+  * 判断「只依赖日期段」时日期×月份是否永不可能命中（如 2 月 30 日）。
+  * 仅当周段为通配符（即日期段是唯一依据）且日期段非通配符时才可能为真；
+  * 2 月取闰年的 29 天作为上限，不会误判闰年可达的 2 月 29 日。
+  */
+ function isImpossibleDate(schedule: CronSchedule): boolean {
+   if (!schedule.weekdayWildcard || schedule.dayWildcard) return false
+   for (const month of schedule.months) {
+     const maxDay = MAX_MONTH_DAYS[month] ?? 31
+     for (const day of schedule.days) {
+       if (day <= maxDay) return false
+     }
+   }
+   return true
+ }
+
  /** 判断 cron 表达式是否合法 */
  export function isValidCron(expr: string): boolean {
    return parseCron(expr) !== null
@@ -72,6 +90,8 @@
  export function nextRunAtMs(expr: string, fromMs: number): number | undefined {
    const schedule = parseCron(expr)
    if (schedule === null) return undefined
+   // 「日×月」永不可能命中（如 2 月 30 日）时提前返回，避免无谓的满窗扫描
+   if (isImpossibleDate(schedule)) return undefined
    const from = new Date(fromMs)
    // 从「下一个整分钟」开始扫描
    const scan = new Date(from.getFullYear(), from.getMonth(), from.getDate(), from.getHours(), from.getMinutes() + 1, 0, 0)

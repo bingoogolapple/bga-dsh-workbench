@@ -9,7 +9,7 @@
  import { ExecutionService, type ExecutionEvent } from './execution.ts'
  import type { TaskStore } from './store.ts'
  import {
-   settleExecution, startExecution, withStatus,
+  settleExecution, startExecution, withStatus,
    type NewTaskInput, type TaskRecord, type TaskStatus,
  } from './tasks.ts'
  import { applyArchiveTask, applyRestoreTask } from './use-cases/task-archive.ts'
@@ -17,6 +17,13 @@
  import { applyDeleteTask } from './use-cases/task-delete.ts'
  import { applyScheduleNextRun as applyScheduleRollForward, applySetSchedule } from './use-cases/task-schedule.ts'
  import { applyUpdateTask, type TaskUpdatePatch } from './use-cases/task-update.ts'
+import {
+  addCategory as metaAddCategory, emptyWorkbenchMeta, markReminderTriggered as metaMarkReminderTriggered,
+  removeCategory as metaRemoveCategory, setCategories as metaSetCategories, setReminder as metaSetReminder,
+  setWeekStart as metaSetWeekStart, toggleDayDone as toggleMetaDayDone,
+  type CategoryDef, type WeekStart, type WorkbenchMeta,
+} from './workbench-meta.ts'
+ import type { WorkbenchMetaStore } from './workbench-meta-store.ts'
 
  /** 会话控制器门面：只暴露控制器需要的最小能力（当前会话快照 + 打开会话） */
  export interface SessionsControllerFace {
@@ -35,6 +42,8 @@
    store: TaskStore
    exec: ExecutionService
    sessions: SessionsControllerFace
+   /** 工作台元数据存储（可选：日报「当日已完成」打卡；缺省使用内存空元数据） */
+   metaStore?: WorkbenchMetaStore
    /** 时钟（默认 Date.now） */
    now?: () => number
    /** 生成执行/任务 ID（默认随机 UUID） */
@@ -75,6 +84,8 @@
    selectedTaskId: string | undefined
    /** 新建/编辑任务时可选的执行目标 */
    executionOptions: ExecutionOptionsSnapshot
+   /** 工作台元数据（日报「当日已完成」打卡等） */
+   meta: WorkbenchMeta
  }
 
  /** 从快照中取出当前选中的任务 */
@@ -114,6 +125,8 @@
    private selectedTaskId: string | undefined
    /** 执行选项（工作区/预设列表），由外部推送 */
    private executionOptions: ExecutionOptionsSnapshot = { workspaces: [], presets: [] }
+   /** 工作台元数据（日报「当日已完成」打卡），从 metaStore 加载 */
+   private meta: WorkbenchMeta = emptyWorkbenchMeta(0)
    /** 状态订阅者集合 */
    private listeners = new Set<() => void>()
    /** 生命周期清理函数集合（dispose 时逐一执行） */
@@ -138,6 +151,7 @@
     */
    start(): void {
      this.tasks = this.deps.store.load()
+     this.meta = this.deps.metaStore?.load(this.now()) ?? emptyWorkbenchMeta(this.now())
      void this.reconcileRunningTasks()
      // 订阅外部存储变化：例如另一个标签页改了 tasks.json，重载并通知
      const unsubscribeExternal = this.deps.store.subscribeExternal?.(() => {
@@ -167,7 +181,49 @@
        archiveView: this.archiveView,
        selectedTaskId: this.selectedTaskId,
        executionOptions: this.executionOptions,
+       meta: this.meta,
      }
+   }
+
+   /** 切换某天「当日日报已完成」打卡（打卡/取消），返回切换后的状态 */
+   toggleDayDone(date: string): void {
+     this.meta = toggleMetaDayDone(this.meta, date, this.now())
+     this.persistAndNotify()
+   }
+   /** 设置周起始日偏好（monday/sunday），持久化并通知 */
+   setWeekStart(weekStart: WeekStart): void {
+     this.meta = metaSetWeekStart(this.meta, weekStart, this.now())
+     this.persistAndNotify()
+   }
+
+   /** 替换整张分类配置表（分类管理弹窗提交），持久化并通知 */
+   setCategories(categories: readonly CategoryDef[]): void {
+     this.meta = metaSetCategories(this.meta, categories, this.now())
+     this.persistAndNotify()
+   }
+
+   /** 追加一个分类（id 冲突时忽略） */
+   addCategory(def: CategoryDef): void {
+     this.meta = metaAddCategory(this.meta, def, this.now())
+     this.persistAndNotify()
+   }
+
+   /** 删除一个分类（任务引用该分类时变为「未分类」显示） */
+   removeCategory(id: string): void {
+     this.meta = metaRemoveCategory(this.meta, id, this.now())
+     this.persistAndNotify()
+   }
+
+   /** 更新日报提醒配置（启用 + cron） */
+   setReminder(patch: { enabled?: boolean; cron?: string }): void {
+     this.meta = metaSetReminder(this.meta, patch, this.now())
+     this.persistAndNotify()
+   }
+
+   /** 记录一次日报提醒触发（去重用），持久化 */
+   markReminderTriggered(): void {
+     this.meta = metaMarkReminderTriggered(this.meta, this.now())
+     this.persistAndNotify()
    }
 
    /** 订阅快照变化，返回取消订阅函数 */
@@ -367,7 +423,8 @@
      this.scheduleReconcile()
      if (!this.boardOpen) return
      const current = currentOf(this.deps.sessions)
-     if (current !== this.lastCurrent) this.closeBoard()
+     // 仅在「打开时已记录到真实会话」且「会话确实切换」时才关闭，避免打开瞬间会话未就绪时被误关
+     if (this.lastCurrent !== undefined && current !== this.lastCurrent) this.closeBoard()
      this.lastCurrent = current
    }
 
@@ -431,6 +488,7 @@
    /** 落盘并通知订阅者（每次状态变更的标准出口） */
    private persistAndNotify(): void {
      this.deps.store.save(this.tasks)
+     this.deps.metaStore?.save(this.meta)
      this.notify()
    }
 

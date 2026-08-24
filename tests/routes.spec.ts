@@ -359,7 +359,7 @@
        text: DEFAULT_TEXT,
        show: true,
        sound: true,
-       storageDir: undefined,
+       storageDir: expect.any(String),
        })
        })
 

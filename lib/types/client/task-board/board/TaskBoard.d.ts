@@ -1,4 +1,6 @@
 import { type BoardController } from '../../../core/controller.ts';
+/** 工作台视图：周矩阵（默认，三合一主视图） / 五列看板（执行流水线） */
+export type WorkbenchView = 'matrix' | 'board';
 /**
  * 看板主视图。
  *

@@ -7,7 +7,7 @@
  * 3. POST /bga-dsh-workbench/settings —— 更新横幅/彩带设置（带逐字段校验）；
  * 4. GET/POST/DELETE /bga-dsh-workbench/tasks —— 任务看板数据的持久化读写（tasks.json）。
  */
- import { readFile, stat, writeFile, unlink, mkdir } from 'node:fs/promises'
+ import { readFile, stat, writeFile, unlink, mkdir, rename } from 'node:fs/promises'
  import { extname, join, isAbsolute } from 'node:path'
  import type { IncomingMessage } from 'node:http'
  import type { WebRoute } from '@deepseek-ai/dsh-host-webserver'
@@ -208,6 +208,16 @@ export interface ExtraOpenSettingsPatch {
      return '.webp'
    }
    return undefined
+ }
+
+ /**
+  * 原子写回文本文件：先写临时文件再 rename 覆盖目标，
+  * 避免进程中途崩溃时留下半截 JSON（对比直接 writeFile 覆盖）。
+  */
+ async function atomicWriteFile(target: string, text: string): Promise<void> {
+   const tmp = `${target}.tmp`
+   await writeFile(tmp, text, 'utf8')
+   await rename(tmp, target)
  }
 
  /**
@@ -419,7 +429,7 @@ export interface ExtraOpenSettingsPatch {
              const text = body.toString('utf8')
              JSON.parse(text) // 语法校验：非法 JSON 直接抛错走 400 分支
              await mkdir(runtime.storageDir, { recursive: true })
-             await writeFile(tasksFile, text, 'utf8')
+             await atomicWriteFile(tasksFile, text)
              res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
              res.end(OK({}))
              return
@@ -434,6 +444,39 @@ export interface ExtraOpenSettingsPatch {
          }
        },
      },
+
+      /**
+       * 工作台元数据持久化端点（日报「当日已完成」打卡等小块状态）。
+       * - GET    读 workbench-meta.json（文件不存在时返回 '{}'）；
+       * - POST   原子写回整个元数据对象（先校验 JSON 合法再落盘）。
+       */
+      {
+        kind: 'exact',
+        path: '/bga-dsh-workbench/workbench-meta',
+        handler: async (req, res) => {
+          const metaFile = join(runtime.storageDir, 'workbench-meta.json')
+          try {
+            if (req.method === 'POST') {
+              // 上限 256KB 的整表写入；先 JSON.parse 校验语法规整再落盘
+              const body = await readBody(req, 256 * 1024)
+              const text = body.toString('utf8')
+              JSON.parse(text) // 语法校验：非法 JSON 直接抛错走 400 分支
+              await mkdir(runtime.storageDir, { recursive: true })
+              await atomicWriteFile(metaFile, text)
+              res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+              res.end(OK({}))
+              return
+            }
+            // 默认 GET：读取元数据；文件缺失时容错地返回空对象
+            const data = await readFile(metaFile, 'utf8').catch(() => '{}')
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(data)
+          } catch (error) {
+            res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' })
+            res.end(JSON.stringify({ ok: false, error: (error as Error).message }))
+          }
+        },
+      },
      {
        kind: 'exact',
        path: '/bga-dsh-workbench/open',
