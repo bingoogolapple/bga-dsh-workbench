@@ -13,8 +13,9 @@
  *   SnapshotStore 通知 React 侧刷新。
  * 该模块与具体 UI 框架解耦，可被任意设置卡片（React 或其他）复用。
  */
- import type { SettingsScope, SettingsScopeSnapshot, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
- import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+ import type { SettingsScope, SettingsScopeSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
+ import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
+ import { snapshotStoreFactory } from '../compat/runtime-modules.ts'
 
 /**
  * 单个字段的「写回动作」：由 parse 解析文本框文本后得到的落库指令。
@@ -328,7 +329,8 @@
     * @returns 初始值为 project() 结果的 SnapshotStore。
     */
    bind<S>(project: () => S): SnapshotStore<S> {
-     const store = createSnapshotStore(project())
+     // 惰性取工厂：首次 bind 时才探测平台模块表（新版 dsh-client-store / 旧版 dsh-client-runtime）。
+     const store = snapshotStoreFactory()(project())
      this.listeners.add(() => { store.set(project()) })
      return store
    }

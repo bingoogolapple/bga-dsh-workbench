@@ -13,7 +13,8 @@
 *   SnapshotStore 通知 React 侧刷新。
 * 该模块与具体 UI 框架解耦，可被任意设置卡片（React 或其他）复用。
 */
-import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client';
+import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client';
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store';
 /**
  * 单个字段的「写回动作」：由 parse 解析文本框文本后得到的落库指令。
  *

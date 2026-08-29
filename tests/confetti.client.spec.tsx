@@ -80,8 +80,14 @@
      await startTurn(flow, 1)
      flow.append(seat('turn-tail', 't1')) // 追加回合尾行，向监视器发出“回合已结束”信号
      await vi.waitFor(() => expect(fire).toHaveBeenCalledTimes(1))
-     // 上报参数应等于消息列表的可视矩形 RECT
-     expect(fire).toHaveBeenCalledWith(RECT)
+     // 上报的第一个参数应等于消息列表的可视矩形 RECT；
+     // 第二个参数是彩带配置（主题/强度）。其取值取决于配置拉取时序——
+     // 配置未就绪时用的是组件内默认值（theme: 'gold'），就绪后才是配置值，
+     // 因此这里只校验“形状与都已透传”，不断言具体取值，避免用例依赖时序。
+     expect(fire).toHaveBeenCalledWith(RECT, expect.objectContaining({
+       theme: expect.any(String),
+       intensity: expect.any(String),
+     }))
    })
 
    // 后续每个完整回合都应再次触发彩带（每回合各庆祝一次）

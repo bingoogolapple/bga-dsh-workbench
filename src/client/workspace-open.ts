@@ -10,8 +10,8 @@
   *   3. 按钮点击后 POST /bga-dsh-workbench/open 交给宿主端跨平台执行。
   * 菜单节点由产品组件持有并在关闭时卸载，注入的按钮随之消失，无需手动清理。
   */
- import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
- import type { IWorkspaces, WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client'
+ import type { Context as ClientContext } from '@deepseek-ai/cordis'
+ import type { IWorkspaces } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import { openMenuLabels, extraOpenMenuItems, extraOpenLabel } from './open-prefs.ts'
 
  /** 宿主打开端点的相对地址（与 src/routes.ts 的 /open 路由对应）。 */
@@ -71,13 +71,19 @@ import { openMenuLabels, extraOpenMenuItems, extraOpenLabel } from './open-prefs
   * 先精确匹配 title（含用户重命名后的标题），再兜底匹配路径 basename。
   * 重名时取第一个匹配（产品允许重复标题）。
   */
+ export interface ResolvableWorkspace {
+   readonly workspaceId: string
+   readonly title?: string
+   readonly path?: string
+ }
+
  export function resolveWorkspacePath(
-   items: readonly WorkspaceView[],
+   items: readonly ResolvableWorkspace[],
    label: string,
  ): string | undefined {
    const byTitle = items.find(item => item.title === label)
    if (byTitle !== undefined) return byTitle.path
-   return items.find(item => basenameOf(item.path) === label)?.path
+   return items.find(item => basenameOf(item.path ?? '') === label)?.path
  }
 
  /**

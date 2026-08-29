@@ -10,8 +10,7 @@
   *   3. 按钮点击后 POST /bga-dsh-workbench/open 交给宿主端跨平台执行。
   * 菜单节点由产品组件持有并在关闭时卸载，注入的按钮随之消失，无需手动清理。
   */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client';
-import type { WorkspaceView } from '@deepseek-ai/dsh-client-runtime/client';
+import type { Context as ClientContext } from '@deepseek-ai/cordis';
 /**
  * 打开 kind → 可读应用名（错误提示前缀用）。附加 IDE 走 extraOpenLabel；
  * finder/terminal/vscode 直接映射。
@@ -24,7 +23,12 @@ export declare function workspaceLabelFromAria(aria: string): string | undefined
  * 先精确匹配 title（含用户重命名后的标题），再兜底匹配路径 basename。
  * 重名时取第一个匹配（产品允许重复标题）。
  */
-export declare function resolveWorkspacePath(items: readonly WorkspaceView[], label: string): string | undefined;
+export interface ResolvableWorkspace {
+    readonly workspaceId: string;
+    readonly title?: string;
+    readonly path?: string;
+}
+export declare function resolveWorkspacePath(items: readonly ResolvableWorkspace[], label: string): string | undefined;
 /**
  * 兜底解析：从「⋯」按钮所在的工作区行（role=treeitem）提取显示名。
  * 行内标题文本节点是 .projectText span（CSS Modules 类名形如 hash_projectText，

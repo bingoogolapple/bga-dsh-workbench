@@ -18,15 +18,24 @@ importers:
       '@deepseek-ai/dsh-agent':
         specifier: link:../deepseek-harness/packages/core/agent
         version: link:../deepseek-harness/packages/core/agent
+      '@deepseek-ai/dsh-api-session-controller':
+        specifier: link:../deepseek-harness/packages/api/session-controller
+        version: link:../deepseek-harness/packages/api/session-controller
+      '@deepseek-ai/dsh-api-workspace-controller':
+        specifier: link:../deepseek-harness/packages/api/workspace-controller
+        version: link:../deepseek-harness/packages/api/workspace-controller
       '@deepseek-ai/dsh-client-connection':
         specifier: link:../deepseek-harness/packages/client/connection
         version: link:../deepseek-harness/packages/client/connection
       '@deepseek-ai/dsh-client-locale':
         specifier: link:../deepseek-harness/packages/client/locale
         version: link:../deepseek-harness/packages/client/locale
-      '@deepseek-ai/dsh-client-runtime':
-        specifier: link:../deepseek-harness/packages/client/runtime
-        version: link:../deepseek-harness/packages/client/runtime
+      '@deepseek-ai/dsh-client-store':
+        specifier: link:../deepseek-harness/packages/client/store
+        version: link:../deepseek-harness/packages/client/store
+      '@deepseek-ai/dsh-client-ui-renderer':
+        specifier: link:../deepseek-harness/packages/client/ui-renderer
+        version: link:../deepseek-harness/packages/client/ui-renderer
       '@deepseek-ai/dsh-client-ui-settings':
         specifier: link:../deepseek-harness/packages/client/ui-settings
         version: link:../deepseek-harness/packages/client/ui-settings

@@ -14,7 +14,8 @@
  *   props.resetField / props.save / props.discard）回传给 CardForm。
  */
  import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
- import type { SettingsScope, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+ import type { SettingsScope } from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
  import { PluginSettingsCard, BooleanField } from './PluginSettingsCard.tsx'
  import { CardForm, booleanField, type CardActions, type CardShell, type FieldState as CardFieldState } from './settings-form.ts'
  

@@ -18,9 +18,60 @@
    completed?: boolean
    /** 是否为空白会话（未跑过任何回合，允许换预设） */
    blank?: boolean
-   /** 会话当前使用的 agent 预设 ID */
+   /** 会话当前使用的 agent 预设 ID（旧版 DSH：直接挂在会话摘要上） */
    agentPreset?: string
- }
+   /**
+    * 宿主持久化投影值（新版 DSH：agentPreset 已从摘要迁到 projection，
+    * 由 agent-presets 投影插件注册；旧版无此字段）。
+    */
+   projectionValues?: { readonly agentPreset?: string }
+   }
+
+   /**
+   * 读取会话当前使用的 agent 预设（新旧 DSH 双来源）。
+   *
+   * - 旧版：直接挂在会话摘要的 `agentPreset` 字段上；
+   * - 新版：摘要上已移除该字段，改由 `projectionValues.agentPreset` 提供
+   *   （由 agent-presets 投影插件注册，未启用时缺失）。
+   *
+   * 不做静默降级：两个来源都取不到就返回 undefined，由调用方决定行为。
+   */
+   export function presetOf(summary: ExecutionSessionSummary | undefined): string | undefined {
+     return summary?.agentPreset ?? summary?.projectionValues?.agentPreset
+   }
+
+   /** 工作区列表快照（执行服务所需的最小形状） */
+   export interface WorkspaceListSnapshot {
+     items: readonly { workspaceId: string; sessionIds?: readonly string[] }[]
+     /** 最近使用的工作区：仅旧版 DSH 提供，新版上游已移除该字段 */
+     recentWorkspaceId: string | undefined
+   }
+
+   /**
+    * 未钉工作区时的默认工作区择优顺序：
+    *
+    * 1. **当前会话所在的工作区** —— 新版 DSH 语义。上游已移除 `recentWorkspaceId`，
+    *    改用「当前会话归属哪个工作区」来贴近用户当前所在上下文；
+    * 2. `recentWorkspaceId` —— 仅旧版 DSH 提供（旧版 WorkspaceView 未必带 sessionIds）；
+    * 3. 列表第一个 —— 最终兜底。
+    *
+    * 任一步取不到就自然落到下一步，不做静默吞错。
+    *
+    * @param sessions   会话列表快照（取 current）。
+    * @param workspaces 工作区列表快照。
+    * @returns 选中的工作区 id，全部落空时为 undefined。
+    */
+   export function preferredWorkspaceId(
+     sessions: { current?: string },
+     workspaces: WorkspaceListSnapshot,
+   ): string | undefined {
+     const current = sessions.current
+     if (current !== undefined) {
+       const owning = workspaces.items.find(item => item.sessionIds?.includes(current) === true)
+       if (owning !== undefined) return owning.workspaceId
+     }
+     return workspaces.recentWorkspaceId ?? workspaces.items[0]?.workspaceId
+   }
 
  /** 会话执行门面：会话列表/绑定/预设记录（由 task-board-apply.ts 适配注入） */
  export interface SessionsExecutionFace {
@@ -29,6 +80,8 @@
        /** 会话仓库是否就绪 */
        phase: 'pending' | 'ready'
        byId: Record<string, ExecutionSessionSummary>
+       /** 当前选中的会话（新版 DSH 提供；旧版缺失时为 undefined） */
+       current?: string
      }
      subscribe(fn: () => void): () => void
    }
@@ -48,7 +101,8 @@
  export interface WorkspacesExecutionFace {
    list: {
      getSnapshot(): {
-       items: readonly { workspaceId: string }[]
+       items: readonly { workspaceId: string; sessionIds?: readonly string[] }[]
+       /** 最近使用的工作区：仅旧版 DSH 提供，新版上游已移除该字段 */
        recentWorkspaceId: string | undefined
      }
    }
@@ -191,7 +245,7 @@
        settleFailed(`cannot switch agent preset to ${mode}: the execution session is not blank`)
        return false
      }
-     if (summary?.agentPreset === mode) return true
+     if (presetOf(summary) === mode) return true
      if (this.env.presets === undefined) {
        settleFailed(`this deployment does not support agent presets (task asks for ${mode})`)
        return false
@@ -302,7 +356,7 @@
 
    /**
     * 连接执行会话：任务钉了工作区则校验其可用并连接之；
-    * 未钉时使用最近使用的工作区（兜底第一个工作区）。
+    * 未钉时按「当前会话所在工作区 → recentWorkspaceId（旧版）→ 第一个」择优。
     */
    private async connectSession(taskWorkspaceId: string | undefined): Promise<string> {
      const workspace = this.env.workspaces.list.getSnapshot()
@@ -313,12 +367,14 @@
        }
        return this.env.workspaces.connectWorkspace(taskWorkspaceId)
      }
-     const workspaceId = workspace.recentWorkspaceId ?? workspace.items[0]?.workspaceId
+     const workspaceId = preferredWorkspaceId(this.env.sessions.list.getSnapshot(), workspace)
      if (workspaceId === undefined) {
        throw new Error('no workspace available to run the task in')
      }
      return this.env.workspaces.connectWorkspace(workspaceId)
    }
+
+
 
    /** 通过会话绑定获取驱动句柄 */
    private driverOf(sessionId: string): SessionDriver | undefined {

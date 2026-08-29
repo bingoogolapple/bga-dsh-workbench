@@ -13,7 +13,7 @@
  // 说明：本文件只包含浏览器端（Client）代码，所有 /bga-dsh-workbench/* 接口
  // 由宿主（Host）进程提供。
  // ============================================================================
- import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+ import type { Context as ClientContext } from '@deepseek-ai/cordis'
  import { createRoot } from 'react-dom/client'
  import { WorkbenchBanner } from './Banner.tsx'
  import { ConfettiLayer } from './ConfettiLayer.tsx'
@@ -27,6 +27,14 @@ import { EnglishLearningLayer } from './english/EnglishLearningLayer.tsx'
  // - sessions / workspaces：会话与会话列表 / 工作区能力
  // - connection：与宿主进程的连接句柄（提供 agent 预设等高级 API）
  // - settingsScope：设置作用域；locale：多语言支持
+ //
+ // ⚠️ 兼容性硬约束：本列表**只能放新旧 DSH 都存在的服务**。
+ // inject 里的服务若在当前版本不存在，Cordis 会一直等待它，插件将卡在
+ // `pending (waiting for service: xxx)` 而永不激活——这是加载期故障，不是功能降级。
+ // 例如 `uiWorkspace` 仅新版存在（旧版的 connectWorkspace 在 workspaces 上），
+ // 因此**绝不能**出现在这里；新版需要它时由 compat/host-bridge.ts 在调用时惰性取用。
+ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+
  export const inject: readonly string[] = ['slots', 'sessions', 'workspaces', 'connection', 'settingsScope', 'locale']
  
  // 后端（Host）提供的 HTTP 接口地址（相对当前页面路径）

@@ -12,17 +12,22 @@
  //     4. 把核心服务运行所需的运行时能力（会话、工作区、连接 API）逐一装配进
  //        ExecutionService / BoardController / SchedulerService。
  // ============================================================================
- import type { ClientContext, SessionId, SettingsScope, SettingsScopeSpec, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
- import type { ISessions, IWorkspaces } from '@deepseek-ai/dsh-client-runtime/client'
- import type { ConnectionHandle, PromptContentPart } from '@deepseek-ai/dsh-client-connection/client'
+ import type { Context as ClientContext } from '@deepseek-ai/cordis'
+ import type { SessionId } from '@deepseek-ai/dsh-session/types'
+  import type { SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client'
+ import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
+ import type { IWorkspaces } from '@deepseek-ai/dsh-api-workspace-controller/client'
+ import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
+ import type { PromptContentPart } from '@deepseek-ai/dsh-api-session-controller/types'
  import type {} from '@deepseek-ai/dsh-client-ui-slots'
- 
+
  import type {} from '@deepseek-ai/dsh-client-locale/client'
- 
+
  import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
- 
+
  import { BoardController } from '../core/controller.ts'
  import { ExecutionService } from '../core/execution.ts'
+ import type { SessionsExecutionFace, WorkspacesExecutionFace, SessionDriver, ExecutionHistoryEvent } from '../core/execution.ts'
  import { SchedulerService } from '../core/scheduler.ts'
  import { FileTaskStore } from '../core/file-store.ts'
  import { WorkbenchMetaStore } from '../core/workbench-meta-store.ts'
@@ -33,6 +38,7 @@ import { mountBoardEmbed } from './task-board/embed-mount.tsx'
  import { mountSidebarEntry } from './task-board/sidebar-entry.ts'
  import { TaskBoardSettingsCard, TaskBoardSettingsCardController, type TaskBoardSettings } from './task-board/TaskBoardSettingsCard.tsx'
  import { en, zh, type TaskBoardKey } from './task-board/locales.ts'
+ import { callHostRpc, connectWorkspace } from './compat/host-bridge.ts'
  
  // 多语言词典的注册命名空间（与 ./task-board/locales.ts 的 key 结构对应）
  const NS = 'bga-dsh-workbench-task-board'
@@ -113,38 +119,38 @@ import { mountBoardEmbed } from './task-board/embed-mount.tsx'
        // 会话能力适配：登记列表查询与「按 id 绑定会话」的方式。
        // binding 返回的会话包装只暴露黑板需要的少量方法（改名/提问/命令/快照/订阅），
        // 返回结果归一化为 { ok, ... } 二元形态，屏蔽不同运行时返回结构的差异。
-       sessions: {
-         list: sessions.list,
-         binding: id => {
+       sessions: ({
+         list: sessions.list as unknown as SessionsExecutionFace['list'],
+         binding: (id: string) => {
            const binding = sessions.binding(id as SessionId)
            if (binding === undefined) return undefined
            const { session } = binding
            return {
              session: {
-               rename: title => session.rename(title),
-               prompt: (content, mode) =>
-                 session.prompt(content as PromptContentPart[], mode).then(result =>
-                   result.ok ? { ok: true as const } : { ok: false as const, error: result.error }),
-               command: line =>
+               rename: (title: string) => session.rename(title),
+               prompt: (content: unknown[], mode: string) =>
+                 session.prompt(content as PromptContentPart[], mode as 'queue' | 'steer').then(result =>
+                   result.ok ? { ok: true as const } : { ok: false as const, error: result.error as unknown }),
+               command: (line: string) =>
                  session.command(line).then(result =>
-                   result.ok ? { ok: true as const, matched: result.value.matched } : { ok: false as const, error: result.error }),
-               getSnapshot: () => session.getSnapshot(),
-               subscribe: fn => session.subscribe(fn),
-             },
+                   result.ok ? { ok: true as const, matched: result.value.matched } : { ok: false as const, error: result.error as unknown }),
+               getSnapshot: () => session.getSnapshot() as unknown,
+               subscribe: (fn: () => void) => session.subscribe(fn),
+             } as SessionDriver,
            }
          },
-         noteAgentPreset: (sessionId, agentPreset) => sessions.noteAgentPreset(sessionId as SessionId, agentPreset),
-       },
-       workspaces: {
-         list: workspaces.list,
-         connectWorkspace: id => workspaces.connectWorkspace(id as WorkspaceId),
-       },
+       } as unknown as SessionsExecutionFace),
+       workspaces: ({
+         list: workspaces.list as unknown as WorkspacesExecutionFace['list'],
+         // 新版该能力在 ctx.uiWorkspace，旧版在 ctx.workspaces —— 由 compat 层探测。
+         connectWorkspace: (id: string) => connectWorkspace(ctx, id),
+       } as unknown as WorkspacesExecutionFace),
        // agent 预设能力：仅当连接可用时提供（用于任务运行参数中的「模式/预设」选择）
        presets: connection !== undefined ? {
          select: async (sessionId, agentPreset) => {
            try {
-             const response = await connection.api.agentPresets.select({ sessionId: sessionId as SessionId, agentPreset })
-             return response.result.ok ? { ok: true as const } : { ok: false as const, error: response.result.error }
+             const response = await callHostRpc(connection, 'agentPresets/select', { sessionId: sessionId as SessionId, agentPreset })
+             return response.ok ? { ok: true as const } : { ok: false as const, error: response.error as unknown }
            } catch (error) {
              return { ok: false as const, error }
            }
@@ -152,14 +158,16 @@ import { mountBoardEmbed } from './task-board/embed-mount.tsx'
        } : undefined,
        // 会话历史能力：仅当连接可用时提供（用于任务执行时的上下文预热/拼接）
        history: connection !== undefined ? {
-         loadTail: async sessionId => {
-           const response = await connection.api.sessions.history({
-             sessionId: sessionId as SessionId,
-             maxMessages: 20,
-           })
-           return response.result.ok
-             ? { events: response.result.value.events.map(entry => entry.event) }
-             : undefined
+         loadTail: async (sessionId: string) => {
+           try {
+             const response = await callHostRpc(connection, 'sessions/history', { sessionId: sessionId as SessionId, maxMessages: 20 })
+             if (!response.ok) return undefined
+             const value = response.value as { events?: readonly { event: unknown }[] }
+             const events = (value.events ?? []).map(entry => entry.event)
+             return { events: events as readonly ExecutionHistoryEvent[] }
+           } catch {
+             return { events: [] }
+           }
          },
        } : undefined,
      })
@@ -217,15 +225,16 @@ import { mountBoardEmbed } from './task-board/embed-mount.tsx'
        // 拉取 agent 预设名册并同步给控制器（供任务运行参数选择「模式/预设」）
        const pushPresetOptions = async (): Promise<void> => {
          try {
-           const response = await connection.api.agentPresets.list({})
-           if (!response.result.ok) return
+           const response = await callHostRpc(connection, 'agentPresets/list', {})
+           if (!response.ok) return
+           const roster = response.value as { presets: readonly { id: string; name?: string; description?: string; broken?: string; isDefault?: boolean }[] }
            controller.setExecutionOptions({
-             presets: response.result.value.presets.map(preset => ({
+             presets: roster.presets.map(preset => ({
                id: preset.id,
-               name: preset.name,
-               description: preset.description,
-               broken: preset.broken,
-               isDefault: preset.isDefault,
+               name: preset.name ?? preset.id,
+               description: preset.description ?? '',
+               broken: preset.broken ?? '',
+               isDefault: preset.isDefault ?? false,
              })),
            })
          } catch (error) {

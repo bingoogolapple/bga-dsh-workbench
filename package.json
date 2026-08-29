@@ -1,6 +1,6 @@
  {
    "name": "bga-dsh-workbench",
-   "version": "1.0.0",
+   "version": "0.1.0",
    "description": "Personal Harness workbench: hero banner, completed-turn confetti, and a built-in task board",
    "license": "MIT",
    "type": "module",
@@ -54,6 +54,7 @@
      "@deepseek-ai/cordis": "*",
      "@deepseek-ai/dsh-agent": "*",
      "@deepseek-ai/dsh-client-ui-settings": "*",
+     "@deepseek-ai/dsh-client-ui-renderer": "*",
      "@deepseek-ai/dsh-client-ui-slots": "*",
      "@deepseek-ai/dsh-host-webserver": "*",
       "@deepseek-ai/dsh-llm": "*",
@@ -64,7 +65,9 @@
      "@deepseek-ai/dsh-workspace": "*",
      "@deepseek-ai/dsh-client-connection": "*",
      "@deepseek-ai/dsh-client-locale": "*",
-     "@deepseek-ai/dsh-client-runtime": "*",
+     "@deepseek-ai/dsh-client-store": "*",
+     "@deepseek-ai/dsh-api-session-controller": "*",
+     "@deepseek-ai/dsh-api-workspace-controller": "*",
      "@deepseek-ai/dsh-system-prompt": "*"
    },
    "peerDependenciesMeta": {
@@ -75,6 +78,9 @@
        "optional": true
      },
      "@deepseek-ai/dsh-client-ui-settings": {
+       "optional": true
+     },
+     "@deepseek-ai/dsh-client-ui-renderer": {
        "optional": true
      },
      "@deepseek-ai/dsh-client-ui-slots": {
@@ -92,7 +98,13 @@
      "@deepseek-ai/dsh-client-locale": {
        "optional": true
      },
-     "@deepseek-ai/dsh-client-runtime": {
+     "@deepseek-ai/dsh-client-store": {
+       "optional": true
+     },
+     "@deepseek-ai/dsh-api-session-controller": {
+       "optional": true
+     },
+     "@deepseek-ai/dsh-api-workspace-controller": {
        "optional": true
      },
      "@deepseek-ai/dsh-system-prompt": {
@@ -102,8 +114,11 @@
    "devDependencies": {
      "@deepseek-ai/cordis": "link:../deepseek-harness/vendor/cordis",
      "@deepseek-ai/dsh-agent": "link:../deepseek-harness/packages/core/agent",
-     "@deepseek-ai/dsh-client-runtime": "link:../deepseek-harness/packages/client/runtime",
+     "@deepseek-ai/dsh-client-store": "link:../deepseek-harness/packages/client/store",
+     "@deepseek-ai/dsh-api-session-controller": "link:../deepseek-harness/packages/api/session-controller",
+     "@deepseek-ai/dsh-api-workspace-controller": "link:../deepseek-harness/packages/api/workspace-controller",
      "@deepseek-ai/dsh-client-ui-settings": "link:../deepseek-harness/packages/client/ui-settings",
+     "@deepseek-ai/dsh-client-ui-renderer": "link:../deepseek-harness/packages/client/ui-renderer",
      "@deepseek-ai/dsh-client-ui-slots": "link:../deepseek-harness/packages/client/ui-slots",
      "@deepseek-ai/dsh-commands": "link:../deepseek-harness/packages/interaction/commands",
      "@deepseek-ai/dsh-host-webserver": "link:../deepseek-harness/packages/host/webserver",

@@ -4,7 +4,13 @@
 // 覆盖：页面刷新后遗留 running 任务的结局调和，特别是「会话空闲但零回合」
 // 不能被误判为成功（应返回 undefined 留待后续调和）。
 import { describe, expect, it } from 'vitest'
-import { ExecutionService, type ExecutionEnvironment, type SessionDriver } from '../src/core/execution.ts'
+import {
+  ExecutionService,
+  preferredWorkspaceId,
+  presetOf,
+  type ExecutionEnvironment,
+  type SessionDriver,
+} from '../src/core/execution.ts'
 import type { TaskRecord } from '../src/core/tasks.ts'
 
 /** 造一条处于 running 状态、且最后一条执行记录已挂会话但未结束的任务 */
@@ -90,5 +96,60 @@ describe('ExecutionService.reconcile 调和判定', () => {
     const result = await svc.reconcile(runningTask('s1'))
     expect(result?.kind).toBe('settled')
     if (result?.kind === 'settled') expect(result.outcome).toBe('cancelled')
+  })
+})
+
+// ------------------------------------------------------------
+// 新旧 DSH 兼容：agent 预设读取
+// 新版把 agentPreset 从会话摘要迁到了 projectionValues，旧版直挂在摘要上。
+// 读取不到会让「已是目标预设就跳过切换」失效 → 每次跑任务都多发一次 RPC。
+// ------------------------------------------------------------
+describe('presetOf：agent 预设的新旧双来源读取', () => {
+  it('旧版：预设直挂在摘要 agentPreset 上 → 能读到', () => {
+    expect(presetOf({ running: false, agentPreset: 'plan' })).toBe('plan')
+  })
+
+  it('新版：预设迁到 projectionValues.agentPreset → 能读到', () => {
+    expect(presetOf({ running: false, projectionValues: { agentPreset: 'plan' } })).toBe('plan')
+  })
+
+  it('两个来源都有时以摘要为准（旧版语义优先）', () => {
+    expect(presetOf({ running: false, agentPreset: 'a', projectionValues: { agentPreset: 'b' } })).toBe('a')
+  })
+
+  it('两个来源都缺失 → undefined（不做静默降级，交由调用方处理）', () => {
+    expect(presetOf({ running: false })).toBeUndefined()
+    expect(presetOf(undefined)).toBeUndefined()
+  })
+})
+
+// ------------------------------------------------------------
+// 新旧 DSH 兼容：默认工作区择优
+// 新版上游移除了 recentWorkspaceId，改用「当前会话归属哪个工作区」。
+// ------------------------------------------------------------
+describe('preferredWorkspaceId：默认工作区择优', () => {
+  const items = [
+    { workspaceId: 'w-first' },
+    { workspaceId: 'w-second', sessionIds: ['s-current'] },
+  ]
+
+  it('当前会话能归属到工作区 → 用它（优先于 recentWorkspaceId 和第一个）', () => {
+    expect(preferredWorkspaceId({ current: 's-current' }, { items, recentWorkspaceId: 'w-recent' }))
+      .toBe('w-second')
+  })
+
+  it('当前会话无归属（旧版 WorkspaceView 未必带 sessionIds）→ 回落 recentWorkspaceId', () => {
+    expect(preferredWorkspaceId(
+      { current: 's-unknown' },
+      { items: [{ workspaceId: 'w-first' }], recentWorkspaceId: 'w-recent' },
+    )).toBe('w-recent')
+  })
+
+  it('无 current 且无 recentWorkspaceId → 兜底列表第一个', () => {
+    expect(preferredWorkspaceId({}, { items, recentWorkspaceId: undefined })).toBe('w-first')
+  })
+
+  it('工作区列表为空 → undefined（connectSession 会据此抛出明确错误）', () => {
+    expect(preferredWorkspaceId({}, { items: [], recentWorkspaceId: undefined })).toBeUndefined()
   })
 })
