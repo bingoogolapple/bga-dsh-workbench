@@ -73,7 +73,7 @@ export function EnglishSettings(_props: EnglishSettingsProps): JSX.Element {
   const [mode, setMode] = useState('copy')
   const [mastery, setMastery] = useState('srs')
   const [threshold, setThreshold] = useState(3)
-  const [sessionSize, setSessionSize] = useState(5)
+  const [sessionSize, setSessionSize] = useState(1)
   const [busy, setBusy] = useState(false)
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const [hoveredEdit, setHoveredEdit] = useState<string | null>(null)
@@ -617,7 +617,7 @@ export function EnglishSettings(_props: EnglishSettingsProps): JSX.Element {
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ flex: '0 0 48%', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={labelStyle}>每次答题数</span>
-              <input type="number" min={1} max={50} style={{ ...inputStyle, minWidth: 0, flex: 1 }} value={sessionSize} onChange={e => setSessionSize(Number(e.target.value))} />
+              <input type="number" min={1} max={10} style={{ ...inputStyle, minWidth: 0, flex: 1 }} value={sessionSize} onChange={e => setSessionSize(Number(e.target.value))} />
             </div>
           </div>
           </div>

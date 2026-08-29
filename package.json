@@ -1,6 +1,6 @@
  {
    "name": "bga-dsh-workbench",
-   "version": "0.1.0",
+   "version": "0.1.1",
    "description": "Personal Harness workbench: hero banner, completed-turn confetti, and a built-in task board",
    "license": "MIT",
    "type": "module",
@@ -21,7 +21,7 @@
      "cordis.patch.yml",
      "dsh.plugin.json",
      "README.md",
-     "README.zh-CN.md",
+     "README.en.md",
      "LICENSE"
    ],
    "sideEffects": false,

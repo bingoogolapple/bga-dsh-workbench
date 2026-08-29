@@ -213,10 +213,10 @@ export function makeItem(text: string, meaning: string, example = '', type: 'wor
   }
 }
 
-function clampSessionSize(v: unknown): number { const n = Number(v); return Number.isFinite(n) && n >= 1 && n <= 50 ? Math.round(n) : 5 }
+function clampSessionSize(v: unknown): number { const n = Number(v); return Number.isFinite(n) && n >= 1 && n <= 10 ? Math.round(n) : 1 }
 
 /** Build a fresh card from generated (or built-in) entries. */
-export function makeCard(topic: string, mode: EnglishCard['mode'], mastery: EnglishCard['mastery'], threshold: number, entries: Array<{ text: string; meaning: string; example?: string; type?: 'word' | 'sentence'; exampleMeaning?: string }>, targetLang = 'en', sessionSize = 5): EnglishCard {
+export function makeCard(topic: string, mode: EnglishCard['mode'], mastery: EnglishCard['mastery'], threshold: number, entries: Array<{ text: string; meaning: string; example?: string; type?: 'word' | 'sentence'; exampleMeaning?: string }>, targetLang = 'en', sessionSize = 1): EnglishCard {
   return {
     id: nanoid(),
     topic: topic.trim(),
@@ -497,7 +497,7 @@ export function publicState(state: EnglishState) {
       mastery: card.mastery,
       threshold: card.threshold,
       targetLang: card.targetLang ?? 'en',
-      sessionSize: card.sessionSize ?? 5,
+      sessionSize: clampSessionSize(card.sessionSize ?? 1),
       locked: card.locked ?? false,
       createdAt: card.createdAt,
       progress: progressOf(card),

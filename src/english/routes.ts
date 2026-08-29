@@ -420,6 +420,6 @@ function clampThreshold(value: unknown): number {
   return Math.max(1, Math.min(20, n))
 }
 function clampSessionSize(value: unknown): number {
-  const n = typeof value === 'number' ? Math.round(value) : 5
-  return Math.max(1, Math.min(50, n))
+  const n = typeof value === 'number' ? Math.round(value) : 1
+  return Math.max(1, Math.min(10, n))
 }

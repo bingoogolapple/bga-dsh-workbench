@@ -230,7 +230,7 @@ export function EnglishLearningLayer(): JSX.Element | null {
     if (phase !== 'correct' && phase !== 'wrong') return
     if (autoCloseTimerRef.current !== null) window.clearTimeout(autoCloseTimerRef.current)
     const card = state?.cards.find(c => c.id === question?.cardId)
-    const limit = card?.sessionSize ?? 5
+    const limit = card?.sessionSize ?? 1
     const newCount = sessionCountRef.current
     if (newCount >= limit) {
       autoCloseTimerRef.current = window.setTimeout(() => { autoCloseTimerRef.current = null; setSessionDone(true); setPhase('ask') }, 1000)
