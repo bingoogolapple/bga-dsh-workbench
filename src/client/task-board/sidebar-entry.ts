@@ -12,8 +12,6 @@
  * 返回的清理函数负责取消 rAF 循环、解除订阅并移除按钮。
  */
 import type { BoardController } from '../../core/controller.ts'
-import { dayStatus, mondayOf, toDateKey, weekDays } from '../../core/matrix.ts'
-import { weekStartOf } from '../../core/workbench-meta.ts'
 import { t } from './locales.ts'
 
 // 入口按钮的标记属性名：用于幂等判定（页面中已有该按钮则不再注入）。
@@ -62,7 +60,7 @@ function findNewSessionBtn(root: HTMLElement): HTMLButtonElement | undefined {
  *
  * @param controller 看板控制器，用于读取 boardOpen 状态并驱动开合。
  */
-function buildLauncher(controller: BoardController): { btn: HTMLButtonElement; updateBadge: () => void } {
+function buildLauncher(controller: BoardController): HTMLButtonElement {
   const btn = document.createElement('button')
   btn.type = 'button'
   btn.setAttribute(LAUNCHER_ATTR, '')
@@ -83,34 +81,17 @@ function buildLauncher(controller: BoardController): { btn: HTMLButtonElement; u
   const label = document.createElement('span')
   label.textContent = t('entry.label')
 
-  // M2：日报未完成角标（本周周一至今，状态非 done 的天数）
-  const badge = document.createElement('span')
-  badge.style.cssText = 'display:none;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--dsw-alias-danger,#e05555);color:#fff;font-size:11px;align-items:center;justify-content:center;flex:none'
-  const updateBadge = (): void => {
-    const snapshot = controller.getSnapshot()
-    const meta = snapshot.meta
-    const start = mondayOf(new Date(), weekStartOf(meta))
-    const days = weekDays(start)
-    const today = toDateKey(new Date())
-    const count = days.filter(date => date <= today && dayStatus(snapshot.tasks, date, meta.dayDoneAt) !== 'done').length
-    if (count > 0 && snapshot.boardOpen === false) {
-      badge.textContent = String(count)
-      badge.style.display = 'inline-flex'
-    } else {
-      badge.style.display = 'none'
-    }
-  }
   // 文字过长时省略号截断，按钮宽度撑满侧边栏。
   Object.assign(label.style, { overflow: 'hidden', textOverflow: 'ellipsis', flex: '1' })
 
-  btn.append(icon, label, badge)
+  btn.append(icon, label)
 
   // 点击：看板开闭互斥切换。
   btn.addEventListener('click', () => {
     controller.getSnapshot().boardOpen ? controller.closeBoard() : controller.openBoard()
   })
 
-  return { btn, updateBadge }
+  return btn
 }
 
 /**
@@ -129,7 +110,7 @@ export function mountSidebarEntry(controller: BoardController): () => void {
     return () => {}
   }
 
-  const { btn: launcher, updateBadge } = buildLauncher(controller)
+  const launcher = buildLauncher(controller)
   // 悬停状态（仅跟踪布尔值；real 的配色计算在 applyColors 里统一进行）。
   const state = { hovering: false }
   // 侧边栏是否处于折叠态：以 <html>/文档中是否存在折叠标记属性为准。
@@ -170,9 +151,8 @@ export function mountSidebarEntry(controller: BoardController): () => void {
   }
 
   place()
-  // 单次订阅统一刷新配色与角标：避免额外订阅泄漏，也统一清理入口
-  const unsub = controller.subscribe(() => { updateBadge(); applyColors() })
-  updateBadge()
+  // 单次订阅统一刷新配色：避免额外订阅泄漏，也统一清理入口
+  const unsub = controller.subscribe(applyColors)
   applyColors()
 
   // rAF 循环：每一帧都补位一次并刷新配色，直到 cleanup 取消。

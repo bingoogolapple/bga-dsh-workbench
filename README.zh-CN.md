@@ -4,7 +4,7 @@
 [![npm](https://img.shields.io/npm/v/bga-dsh-workbench.svg)](https://www.npmjs.com/package/bga-dsh-workbench)
 [![npm](https://img.shields.io/npm/dm/bga-dsh-workbench.svg)](https://www.npmjs.com/package/bga-dsh-workbench)
 
-**🌐 [English Documentation](README.md)**
+[English](README.md) | 中文
 
 一个为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 定制的个人工作台插件：在空态页顶部展示个性化横幅与头像、完成对话时撒彩带庆祝，还能顺手学点外语；内置一个可真实执行任务的「任务看板」，并提供一键用本机应用打开工作区目录的「打开方式」菜单。
 
