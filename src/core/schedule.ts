@@ -116,7 +116,9 @@
    // 逗号分隔的多个部分，逐个解析后并入集合
    for (const part of field.split(',')) {
      if (part === '') return false
-     const [range, stepRaw] = part.split('/')
+     const slashParts = part.split('/')
+     if (slashParts.length > 2) return false
+     const [range, stepRaw] = slashParts
      let low: number
      let high: number
      if (range === '*') {

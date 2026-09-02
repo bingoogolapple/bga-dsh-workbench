@@ -30,6 +30,7 @@
    environment?: {
      addEventListener(type: 'visibilitychange', listener: () => void): void
      removeEventListener(type: 'visibilitychange', listener: () => void): void
+     visibilityState?: 'visible' | 'hidden'
    }
  }
 
@@ -43,6 +44,8 @@
    private disposed = false
    /** 是否已启动 */
    private started = false
+   /** 防止异步 tick 重叠，避免同一计划被重复接受 */
+   private tickInFlight = false
 
    /** 构造调度器，注入依赖 */
    constructor(private readonly deps: SchedulerDeps) {}
@@ -53,10 +56,13 @@
      if (this.started) return
      this.started = true
      // 先立即扫一次，随后按 tickMs 周期循环
-     this.tick()
-     this.timer = setInterval(() => { this.tick() }, this.deps.tickMs ?? 60_000)
+     void this.tick()
+     this.timer = setInterval(() => { void this.tick() }, this.deps.tickMs ?? 60_000)
      if (this.deps.environment !== undefined) {
-       this.environmentListener = () => { this.tick() }
+       this.environmentListener = () => {
+         if (this.deps.environment?.visibilityState === 'hidden') return
+         void this.tick()
+       }
        this.deps.environment.addEventListener('visibilitychange', this.environmentListener)
      }
    }
@@ -90,6 +96,9 @@
     */
    async tick(): Promise<void> {
      if (this.disposed) return
+     if (this.tickInFlight) return
+     this.tickInFlight = true
+     try {
      if (this.deps.ready !== undefined && !this.deps.ready()) return
      // 先从存储重新加载，避免拿到过期数据
      this.deps.refresh?.()
@@ -120,6 +129,9 @@
        if (next !== undefined && next <= now) next = nextRunAtMs(schedule.cron, now)
        const accepted = await this.deps.runTask(task.id)
        if (accepted) this.deps.applySchedule(task.id, next, now)
+     }
+     } finally {
+       this.tickInFlight = false
      }
    }
  }

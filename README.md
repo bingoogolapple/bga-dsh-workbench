@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/github/license/bingoogolapple/bga-dsh-workbench)](LICENSE)
 [![npm](https://img.shields.io/npm/v/bga-dsh-workbench.svg)](https://www.npmjs.com/package/bga-dsh-workbench)
 [![npm](https://img.shields.io/npm/dm/bga-dsh-workbench.svg)](https://www.npmjs.com/package/bga-dsh-workbench)
-[![支持的 DSH 版本：0.1.1-rc.1 · 0.1.1-rc.2 · 0.1.2-alpha.1](https://img.shields.io/badge/DSH-0.1.1--rc.1_%C2%B7_0.1.1--rc.2_%C2%B7_0.1.2--alpha.1-4d6bfe)](https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions)
+[![支持的 DSH 版本：0.1.1-rc.1 · 0.1.1-rc.2 · 0.1.2-alpha.1 · 0.1.2-alpha.2 · 0.1.2-alpha.3 · 0.1.2-alpha.4 · 0.1.2-alpha.5](https://img.shields.io/badge/DSH-0.1.1--rc.1_%C2%B7_0.1.1--rc.2_%C2%B7_0.1.2--alpha.1_%C2%B7_0.1.2--alpha.2_%C2%B7_0.1.2--alpha.3_%C2%B7_0.1.2--alpha.4_%C2%B7_0.1.2--alpha.5-4d6bfe)](https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions)
 
 [English](README.en.md) | 中文
 

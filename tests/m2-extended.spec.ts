@@ -168,6 +168,8 @@ describe('M2 · 日报提醒', () => {
     expect(dt?.getDate()).toBe(20)
     expect(dt?.getHours()).toBe(21)
     expect(dt?.getMinutes()).toBe(0)
+    expect(isValidCron('*/2/3 * * * *')).toBe(false)
+    expect(isValidCron('1-5/2/9 * * * *')).toBe(false)
   })
 
   it('workbench-meta reminder config and trigger bookkeeping', () => {

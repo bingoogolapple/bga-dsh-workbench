@@ -224,14 +224,35 @@ export type SupportStatus = typeof SUPPORT_STATUSES[number]
   * 采用宽松校验：保证渲染/操作所需的字段类型正确即可，其余可选字段不逐一校验，
   * 目标是过滤损坏或来历不明的条目，避免渲染时对 title/status 等关键字段解引用崩溃。
   */
- export function isTaskRecord(value: unknown): value is TaskRecord {
+export function isTaskRecord(value: unknown): value is TaskRecord {
    if (typeof value !== 'object' || value === null) return false
    const record = value as Record<string, unknown>
    if (typeof record.id !== 'string' || typeof record.title !== 'string') return false
    if (typeof record.description !== 'string' || typeof record.prompt !== 'string') return false
    if (!isTaskStatus(record.status)) return false
    if (typeof record.createdAt !== 'number' || typeof record.updatedAt !== 'number') return false
-   if (!Array.isArray(record.executions)) return false
+   if (!Number.isFinite(record.createdAt) || !Number.isFinite(record.updatedAt)) return false
+   if (!Array.isArray(record.executions) || !record.executions.every(isExecutionRecord)) return false
+   if (record.schedule !== undefined && !isScheduleRule(record.schedule)) return false
+   return true
+ }
+
+ function isExecutionRecord(value: unknown): value is ExecutionRecord {
+   if (typeof value !== 'object' || value === null) return false
+   const record = value as Record<string, unknown>
+   if (typeof record.id !== 'string' || typeof record.startedAt !== 'number' || !Number.isFinite(record.startedAt)) return false
+   if (record.sessionId !== undefined && typeof record.sessionId !== 'string') return false
+   if (record.endedAt !== undefined && (typeof record.endedAt !== 'number' || !Number.isFinite(record.endedAt))) return false
+   if (record.result !== undefined && !['succeeded', 'failed', 'cancelled'].includes(String(record.result))) return false
+   return record.error === undefined || typeof record.error === 'string'
+ }
+
+ function isScheduleRule(value: unknown): value is ScheduleRule {
+   if (typeof value !== 'object' || value === null) return false
+   const record = value as Record<string, unknown>
+   if (typeof record.enabled !== 'boolean' || typeof record.cron !== 'string') return false
+   if (record.nextRunAt !== undefined && typeof record.nextRunAt !== 'number') return false
+   if (record.lastTriggeredAt !== undefined && typeof record.lastTriggeredAt !== 'number') return false
    return true
  }
 

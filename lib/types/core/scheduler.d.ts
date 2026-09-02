@@ -19,6 +19,7 @@ export interface SchedulerDeps {
     environment?: {
         addEventListener(type: 'visibilitychange', listener: () => void): void;
         removeEventListener(type: 'visibilitychange', listener: () => void): void;
+        visibilityState?: 'visible' | 'hidden';
     };
 }
 /** 定时调度服务 */
@@ -32,6 +33,8 @@ export declare class SchedulerService {
     private disposed;
     /** 是否已启动 */
     private started;
+    /** 防止异步 tick 重叠，避免同一计划被重复接受 */
+    private tickInFlight;
     /** 构造调度器，注入依赖 */
     constructor(deps: SchedulerDeps);
     /** 启动调度：立即补一次 tick，随后进入固定间隔循环，并可选挂上可见性监听 */
