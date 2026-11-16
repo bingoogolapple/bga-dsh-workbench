@@ -55,7 +55,7 @@
 
 ### 📋 内置任务看板（Task Board）
 
-- 在侧边栏提供「任务看板」入口，提供两种视图，随时切换：
+- 通过侧边栏「BGA 工作台」打开任务看板。若取消固定，可从侧边栏「更多」打开。看板支持两种视图，随时切换：
   - **周矩阵**（默认主视图）：按「分类 × 周一到周日」排布本周任务，一目了然；
   - **五列看板**：待规划 / 待办 / 进行中 / 已完成 / 已失败，适合流水线式推进。
 - **任务形态**分两种：
@@ -100,7 +100,7 @@
 
 ## 软件使用者
 
-工作台 0.2.0 适配 DSH `0.2.2-rc.3`。使用旧 DSH 的用户可继续安装工作台 0.1.2。
+工作台 0.2.1 适配 DSH `0.2.2-rc.3`。使用旧 DSH 的用户可继续安装工作台 0.1.2。
 
 升级后沿用现有 `storageDir` 中的头像文件、任务、周矩阵和学习数据。工作台设置通过当前 profile 的插件配置保存，旧版偏好可在设置页重新配置。
 
@@ -116,7 +116,7 @@ dsh plugin --profile <你的 profile 名> add bga-dsh-workbench
 dsh plugin --profile <你的 profile 名> add github:bingoogolapple/bga-dsh-workbench
 
 # 或安装本地打包产物
-dsh plugin --profile <你的 profile 名> add /path/to/bga-dsh-workbench-0.2.0.tgz
+dsh plugin --profile <你的 profile 名> add /path/to/bga-dsh-workbench-0.2.1.tgz
 ```
 
 > 安装后重启 DSH 服务（或相应 profile），横幅、任务看板等能力即生效。
@@ -124,7 +124,7 @@ dsh plugin --profile <你的 profile 名> add /path/to/bga-dsh-workbench-0.2.0.t
 ### 使用
 
 1. 打开 Harness Web 界面，在设置页的「工作台」分组中配置横幅文本、头像、彩带主题与音效、外语学习、打开方式偏好等。
-2. 从侧边栏「任务看板」入口进入看板，用周矩阵或五列看板管理任务；需要时开启定时执行。
+2. 从侧边栏「BGA 工作台」进入看板，用周矩阵或五列看板管理任务；需要时开启定时执行。
 3. 在对话框中让 agent 协助拆解和起草任务。从侧栏任务看板创建、管理或运行任务。
 
 ## 软件维护者
@@ -189,8 +189,8 @@ dsh plugin --profile <你的 profile 名> add .
 2. 打版本 tag 并推送，例如：
 
    ```bash
-   git tag v0.2.0
-   git push origin v0.2.0
+   git tag -a v0.2.1 -m "v0.2.1"
+   git push origin v0.2.1
    ```
 
 3. 使用者即可安装本插件：

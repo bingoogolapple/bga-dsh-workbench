@@ -55,7 +55,7 @@ A personal workbench plugin customized for [DeepSeek Harness](https://github.com
 
 ### 📋 Built-in Task Board
 
-- Provides a "Task Board" entry in the sidebar, with two views you can switch between at any time:
+- Open the task board from "BGA Workbench" in the sidebar. If you unpin it, you can still open it from "More". The board has two views you can switch between at any time:
   - **Week Matrix** (default main view): lays out this week's tasks by "category × Mon–Sun" for a quick overview;
   - **Five-column kanban**: Planned / To-do / In Progress / Done / Failed, ideal for pipeline-style progress.
 - **Two task types**:
@@ -100,7 +100,7 @@ The "Task Board" feature of this plugin is a **customized derivative** of the [`
 
 ## For End Users
 
-Workbench 0.2.0 targets DSH `0.2.2-rc.3`. Older DSH installations can continue using Workbench 0.1.2.
+Workbench 0.2.1 targets DSH `0.2.2-rc.3`. Older DSH installations can continue using Workbench 0.1.2.
 
 Upgrades keep existing avatar files, tasks, Week Matrix data, and learning progress under `storageDir`. Workbench preferences are saved in the current profile's plugin configuration. You can reconfigure preferences from older versions in Settings.
 
@@ -116,7 +116,7 @@ dsh plugin --profile <your profile name> add bga-dsh-workbench
 dsh plugin --profile <your profile name> add github:bingoogolapple/bga-dsh-workbench
 
 # Or install the local package archive
-dsh plugin --profile <your profile name> add /path/to/bga-dsh-workbench-0.2.0.tgz
+dsh plugin --profile <your profile name> add /path/to/bga-dsh-workbench-0.2.1.tgz
 ```
 
 > After installation, restart the DSH service (or the corresponding profile) for the banner, task board, and other capabilities to take effect.
@@ -124,7 +124,7 @@ dsh plugin --profile <your profile name> add /path/to/bga-dsh-workbench-0.2.0.tg
 ### Usage
 
 1. Open the Harness web interface and configure the banner text, avatar, confetti theme & sound, foreign-language learning, and Open With preferences under the "Workbench" group on the settings page.
-2. Enter the board from the sidebar "Task Board" entry, manage your tasks with the Week Matrix or the kanban view; enable scheduled execution when needed.
+2. Open "BGA Workbench" in the sidebar and manage your tasks with the Week Matrix or the kanban view; enable scheduled execution when needed.
 3. Collaborate with the "Task Board" in the chat, letting the agent help you manage and execute tasks.
 
 ## For Maintainers
@@ -189,8 +189,8 @@ After editing the source, run `pnpm build` again and restart the DSH service for
 2. Tag a version and push, for example:
 
    ```bash
-   git tag v0.2.0
-   git push origin v0.2.0
+   git tag -a v0.2.1 -m "v0.2.1"
+   git push origin v0.2.1
    ```
 
 3. Users can then install the plugin:

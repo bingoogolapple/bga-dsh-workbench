@@ -1300,54 +1300,6 @@
   min-height: 0;
 }
 
-/* src/client/task-board/sidebar-entry.module.css */
-.sidebar_entry_sessionActions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  width: 100%;
-  min-width: 0;
-}
-.sidebar_entry_launcher {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 32px;
-  height: 32px;
-  margin: 2px auto 0;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--dsw-alias-label-secondary);
-  cursor: pointer;
-  font: inherit;
-  white-space: nowrap;
-}
-.sidebar_entry_launcher[data-wide] {
-  width: 100%;
-  justify-content: flex-start;
-  padding-inline: 8px;
-}
-.sidebar_entry_launcher:hover {
-  background: var(--dsw-specific-sidebar-nav-item-hover);
-  color: var(--dsw-alias-label-primary);
-}
-.sidebar_entry_launcher[aria-pressed=true] {
-  background: var(--dsw-specific-sidebar-nav-item-active);
-  color: var(--dsw-alias-label-primary);
-}
-.sidebar_entry_launcher:focus-visible {
-  outline: 2px solid var(--dsw-alias-state-business-primary);
-  outline-offset: 2px;
-}
-.sidebar_entry_label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.sidebar_entry_launcher svg {
-  flex: none;
-}
-
 /* src/client/task-board/cfg-card.module.css */
 .cfg_card_bga-kb-cfg {
   border: 1px solid var(--dsw-alias-border-l2);

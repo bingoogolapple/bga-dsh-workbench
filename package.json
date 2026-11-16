@@ -1,6 +1,6 @@
 {
   "name": "bga-dsh-workbench",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Personal Harness workbench: hero banner, completed-turn confetti, and a built-in task board",
   "license": "MIT",
   "type": "module",
@@ -61,7 +61,6 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/dsh-agent-default-model": "0.2.2-rc.3",
-    "@deepseek-ai/dsh-api-remote-access": "0.2.2-rc.3",
     "@deepseek-ai/dsh-api-remotes": "0.2.2-rc.3",
     "@deepseek-ai/dsh-api-session-controller": "0.2.2-rc.3",
     "@deepseek-ai/dsh-api-workspace-controller": "0.2.2-rc.3",
