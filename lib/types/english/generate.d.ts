@@ -7,6 +7,12 @@
  * cheaper than driving a full agent session just to emit a JSON word list.
  */
 import type { Context } from '@deepseek-ai/cordis';
+type EnglishModelSelection = {
+    provider: string;
+    model: string;
+};
+export declare function currentEnglishModel(ctx: Context): EnglishModelSelection | undefined;
+export declare function saveEnglishDefaultModel(ctx: Context, selection: EnglishModelSelection): Promise<void>;
 /**
  * Call the model once for `topic` and return the model's raw reply text.
  * Returns undefined when the llm service is unavailable, neither an explicit
@@ -14,10 +20,7 @@ import type { Context } from '@deepseek-ai/cordis';
  * with no text. Throws with the model's actual failure reason when the stream
  * terminates on an error/abort, so the settings page shows why generation failed.
  */
-export declare function generateEnglishText(ctx: Context, topic: string, selection?: {
-    provider: string;
-    model: string;
-}, nativeLang?: string, targetLang?: string): Promise<string | undefined>;
+export declare function generateEnglishText(ctx: Context, topic: string, selection?: EnglishModelSelection, nativeLang?: string, targetLang?: string): Promise<string | undefined>;
 /** Extract the first JSON value (object or array) from an assistant text. */
 export declare function extractJson(text: string): unknown;
 /**
@@ -33,3 +36,4 @@ export declare function listEnglishModels(ctx: Context): Promise<Array<{
         name: string;
     }>;
 }>>;
+export {};

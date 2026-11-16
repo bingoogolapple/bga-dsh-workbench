@@ -111,7 +111,7 @@ export function NewTaskModal({ controller, onClose, prefill }: {
   // 定位上下文（absolute 覆盖层）裁剪或层级遮蔽。
   return createPortal(
     // 遮罩：点击遮罩本身（而非弹窗内部）即关闭。
-    <div className={css["bga-kb-modal-bg"]} onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
+    <div className={css["bga-kb-modal-bg"]} data-window-drag-exclude="" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
       <form
         ref={dialogRef}
         className={css["bga-kb-modal"]}

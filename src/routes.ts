@@ -34,6 +34,8 @@
 
  /** 彩带（完成回合庆祝特效）配置 */
  export interface ConfettiConfig {
+   /** 是否播放庆祝特效 */
+   readonly show: boolean
    /** 是否播放庆祝音效 */
    readonly sound: boolean
    /** 彩带配色主题 */
@@ -65,6 +67,7 @@
  export interface WorkbenchConfig {
    readonly banner: ResolvedBannerConfig
    readonly confetti: ConfettiConfig
+   readonly english: { readonly enabled: boolean }
    readonly open: OpenConfig
     /** 附加 IDE 打开方式的展示开关（true = 展示在工作区菜单尾部） */
     readonly openExtra: ExtraOpenConfig
@@ -101,6 +104,9 @@ export interface ExtraOpenConfig {
  export interface ConfettiSettingsPatch {
    readonly show?: boolean
    readonly sound?: boolean
+   readonly theme?: ConfettiTheme
+   readonly intensity?: ConfettiIntensity
+   readonly trigger?: ConfettiTrigger
  }
 
  /** 英语学习设置的部分更新 */
@@ -298,7 +304,6 @@ export interface ExtraOpenSettingsPatch {
        kind: 'exact',
        path: '/bga-dsh-workbench/config',
        handler: (_req, res) => {
-          // 返回当前生效的横幅+彩带+打开方式配置，供浏览器端初始化界面
          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
          res.end(JSON.stringify(runtime.resolve()))
        },
@@ -351,7 +356,11 @@ export interface ExtraOpenSettingsPatch {
                throw new Error('confetti must be an object')
              }
              const fields = confetti as Record<string, unknown>
-             const item: { sound?: boolean; theme?: ConfettiTheme; intensity?: ConfettiIntensity; trigger?: ConfettiTrigger } = {}
+             const item: { show?: boolean; sound?: boolean; theme?: ConfettiTheme; intensity?: ConfettiIntensity; trigger?: ConfettiTrigger } = {}
+             if (fields.show !== undefined) {
+               if (typeof fields.show !== 'boolean') throw new Error('confetti.show must be a boolean')
+               item.show = fields.show
+             }
              if (fields.sound !== undefined) {
                if (typeof fields.sound !== 'boolean') throw new Error('confetti.sound must be a boolean')
                item.sound = fields.sound

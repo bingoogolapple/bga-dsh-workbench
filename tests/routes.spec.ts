@@ -21,6 +21,7 @@
  import { join } from 'node:path'
  import { afterEach, describe, expect, it, vi } from 'vitest'
  import { Config, DEFAULT_TEXT } from '../src/index.ts'
+ import { resolveWorkbenchSettings } from '../src/settings.ts'
  import { DEFAULT_AVATAR_BYTES } from '../src/default-avatar.ts'
  import {
    avatarContentType, createWorkbenchRoutes, readBody, sniffImageType,
@@ -90,7 +91,8 @@
  function runtime(config: Partial<import('../src/routes.ts').ResolvedBannerConfig> = {}, open: { terminal?: string; editor?: string } = {}): { runtime: WorkbenchRuntime; updates: ReturnType<typeof vi.fn> } {
    const resolved: WorkbenchConfig = {
      banner: { avatarPath: '', text: DEFAULT_TEXT, show: true, ...config },
-     confetti: { sound: true },
+     confetti: { show: true, sound: true, theme: 'default', intensity: 'large', trigger: 'success' },
+     english: { enabled: true },
       open: { terminal: open.terminal ?? '', editor: open.editor ?? '' },
       openExtra: { androidStudio: true, xcode: true, wechatDevtools: true, intellijIdea: true, devecoStudio: true, webstorm: true, pycharm: true, goland: true },
    }
@@ -107,6 +109,7 @@
        resolve: () => resolved,
        updateSettings,
        saveAvatar,
+       storageDir: tmpdir(),
      },
      updates: updateSettings,
    }
@@ -228,7 +231,8 @@
      await byPath(routes(rt), '/bga-dsh-workbench/config').handler({} as never, res)
      expect(JSON.parse(String(calls[0]!.body))).toEqual({
        banner: { avatarPath: '/a.png', text: '的专属 Harness 工作台', show: true },
-       confetti: { sound: true },
+       confetti: { show: true, sound: true, theme: 'default', intensity: 'large', trigger: 'success' },
+       english: { enabled: true },
        open: { terminal: '', editor: '' },
        openExtra: { androidStudio: true, xcode: true, wechatDevtools: true, intellijIdea: true, devecoStudio: true, webstorm: true, pycharm: true, goland: true },
      })
@@ -252,12 +256,13 @@
    // confetti 模块的设置补丁同样应被持久化
    it('persists a confetti module patch', async () => {
      const { runtime: rt, updates } = runtime({})
-     const { req, pushAll } = fakeRequest('POST', [Buffer.from(JSON.stringify({ confetti: { sound: false } }), 'utf8')])
+     const confetti = { show: false, sound: false, theme: 'gold', intensity: 'epic', trigger: 'task' }
+     const { req, pushAll } = fakeRequest('POST', [Buffer.from(JSON.stringify({ confetti }), 'utf8')])
      const { res, calls } = capture()
      const promise = byPath(routes(rt), '/bga-dsh-workbench/settings').handler(req, res)
      pushAll()
      await promise
-     expect(updates).toHaveBeenCalledWith({ confetti: { sound: false } })
+     expect(updates).toHaveBeenCalledWith({ confetti })
      expect(JSON.parse(String(calls[0]!.body))).toEqual({ ok: true })
    })
 
@@ -306,6 +311,7 @@
        JSON.stringify({ banner: { text: 42 } }), // text 类型错误
        JSON.stringify({ banner: { show: 'yes' } }), // show 类型错误
        JSON.stringify({ confetti: 42 }), // confetti 不是对象
+       JSON.stringify({ confetti: { show: 'yes' } }), // show 类型错误
        JSON.stringify({ confetti: { sound: 'yes' } }), // sound 类型错误
      ]) {
        const { req, pushAll } = fakeRequest('POST', [Buffer.from(payload, 'utf8')])
@@ -354,26 +360,52 @@
  describe('Config schema defaults', () => {
    // 不提供配置时填充所有文档化默认值
    it('fills the documented defaults when no config is supplied', () => {
-     expect(Config(undefined)).toEqual({
+     expect(Config(undefined)).toMatchObject({
        avatarPath: '',
        text: DEFAULT_TEXT,
        show: true,
        sound: true,
        storageDir: expect.any(String),
-       })
-       })
+     })
+   })
 
    // 显式提供的配置项覆盖默认值，其余字段仍保持默认
    it('accepts explicit overrides', () => {
      const value = Config({ avatarPath: '/tmp/a.png', text: 'hello', show: false, sound: false, storageDir: '/tmp/storage' })
-     expect(value).toEqual({
+     expect(value).toMatchObject({
        avatarPath: '/tmp/a.png',
        text: 'hello',
        show: false,
        sound: false,
        storageDir: '/tmp/storage',
-       })
-       })
+     })
+   })
+
+   it('uses composition defaults and applies explicit live settings', () => {
+     const value = Config({
+       avatarPath: '/tmp/initial.png',
+       text: 'Inherited greeting',
+       show: false,
+       sound: false,
+       preferences: {
+         banner: { avatarPath: '', text: '', show: true },
+         confetti: { theme: 'gold', trigger: 'task' },
+         english: { enabled: false },
+         open: { editor: 'editor-cursor' },
+         openExtra: { xcode: false },
+       },
+       taskBoard: { enabled: false },
+     })
+
+     expect(resolveWorkbenchSettings(value)).toMatchObject({
+       banner: { avatarPath: '/tmp/initial.png', text: 'Inherited greeting', show: true },
+       confetti: { show: false, sound: false, theme: 'gold', intensity: 'large', trigger: 'task' },
+       english: { enabled: false },
+       open: { editor: 'editor-cursor', terminal: '' },
+       openExtra: { xcode: false, androidStudio: true },
+     })
+     expect(value.taskBoard.get().enabled).toBe(false)
+   })
  })
 
 describe('open route', () => {

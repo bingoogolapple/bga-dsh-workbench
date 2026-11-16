@@ -26,6 +26,12 @@ import { TaskDetail } from './TaskDetail.tsx'
 /** 工作台视图：周矩阵（默认，三合一主视图） / 五列看板（执行流水线） */
 export type WorkbenchView = 'matrix' | 'board'
 
+export interface TaskBoardDraft {
+  view?: WorkbenchView
+  filter?: string
+  quick?: string
+}
+
 // 任务状态 -> 列标题文案 key 的映射（渲染各列标题用）。
 const STATUS_KEY: Record<TaskStatus, TaskBoardKey> = {
   backlog: 'board.status.backlog',
@@ -62,7 +68,11 @@ const MemoTaskCard = memo(function MemoTaskCard({ task, onOpen, onDelete }: { ta
  * @param props.controller 看板控制器（读取快照、订阅、执行各种操作）。
  * @param props.embedded 是否处于内嵌模式（隐藏「返回对话」按钮）。
  */
-export function TaskBoard({ controller, embedded = false }: { controller: BoardController; embedded?: boolean }) {
+export function TaskBoard({ controller, embedded = false, draft }: {
+  controller: BoardController
+  embedded?: boolean
+  draft?: TaskBoardDraft
+}) {
   // 订阅控制器快照：任务/打开状态/归档视图等变化都会重渲染工作台。
   const [snapshot, setSnapshot] = useState(controller.getSnapshot())
   useEffect(
@@ -71,11 +81,14 @@ export function TaskBoard({ controller, embedded = false }: { controller: BoardC
   )
   // —— 本地 UI 状态 ——
   // 当前视图：周矩阵（全屏工作台默认，三合一主视图） / 五列看板（嵌入式默认，执行流水线）。
-  const [view, setView] = useState<WorkbenchView>(embedded ? 'board' : 'matrix')
+  const [view, setView] = useState<WorkbenchView>(draft?.view ?? (embedded ? 'board' : 'matrix'))
   // 筛选词。
-  const [filter, setFilter] = useState('')
+  const [filter, setFilter] = useState(draft?.filter ?? '')
   // 快速添加输入框的文本。
-  const [quick, setQuick] = useState('')
+  const [quick, setQuick] = useState(draft?.quick ?? '')
+  useEffect(() => {
+    if (draft !== undefined) Object.assign(draft, { view, filter, quick })
+  }, [draft, view, filter, quick])
   // 是否显示「新建任务」弹窗。
   const [showNew, setShowNew] = useState(false)
   // 待删除确认的任务 id（undefined 表示当前没有删除确认框）。

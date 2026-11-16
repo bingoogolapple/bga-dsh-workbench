@@ -24,8 +24,11 @@
    applySchedule(id: string, nextRunAt: number | undefined, lastTriggeredAt: number | undefined): void
    /** tick 间隔毫秒数（默认 60_000） */
    tickMs?: number
-   /** 可选的就绪判断：未就绪时跳过本 tick */
-   ready?: () => boolean
+   /** 等待运行时目录就绪，首次就绪时立即补扫。 */
+   readiness?: {
+     getSnapshot(): boolean
+     subscribe(listener: () => void): () => void
+   }
    /** 可选环境（浏览器 document）：用于挂 visibilitychange 监听 */
    environment?: {
      addEventListener(type: 'visibilitychange', listener: () => void): void
@@ -40,6 +43,7 @@
    private timer: ReturnType<typeof setInterval> | undefined
    /** visibilitychange 监听器（用于页面恢复可见时补扫） */
    private environmentListener: (() => void) | undefined
+   private unsubscribeReadiness: (() => void) | undefined
    /** 是否已释放（dispose 后不再工作） */
    private disposed = false
    /** 是否已启动 */
@@ -55,6 +59,16 @@
      if (this.disposed) return
      if (this.started) return
      this.started = true
+     const { readiness } = this.deps
+     if (readiness !== undefined) {
+       let wasReady = readiness.getSnapshot()
+       this.unsubscribeReadiness = readiness.subscribe(() => {
+         const ready = readiness.getSnapshot()
+         const becameReady = ready && !wasReady
+         wasReady = ready
+         if (becameReady) void this.tick()
+       })
+     }
      // 先立即扫一次，随后按 tickMs 周期循环
      void this.tick()
      this.timer = setInterval(() => { void this.tick() }, this.deps.tickMs ?? 60_000)
@@ -74,9 +88,11 @@
 
    /** 释放全部资源：清定时器、移除监听、标记已释放 */
    dispose(): void {
-     if (this.disposed && this.timer === undefined && this.environmentListener === undefined) return
+     if (this.disposed) return
      this.disposed = true
      this.started = false
+     this.unsubscribeReadiness?.()
+     this.unsubscribeReadiness = undefined
      if (this.timer !== undefined) {
        clearInterval(this.timer)
        this.timer = undefined
@@ -99,7 +115,7 @@
      if (this.tickInFlight) return
      this.tickInFlight = true
      try {
-     if (this.deps.ready !== undefined && !this.deps.ready()) return
+     if (this.deps.readiness?.getSnapshot() === false) return
      // 先从存储重新加载，避免拿到过期数据
      this.deps.refresh?.()
      const now = this.deps.now()
@@ -128,6 +144,7 @@
        // 若计算出的下次仍不晚于 now（极少见），以 now 为基准重算
        if (next !== undefined && next <= now) next = nextRunAtMs(schedule.cron, now)
        const accepted = await this.deps.runTask(task.id)
+       if (this.disposed) return
        if (accepted) this.deps.applySchedule(task.id, next, now)
      }
      } finally {

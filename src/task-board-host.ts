@@ -5,6 +5,7 @@
  * 使每个 agent 会话都知道本部署内置了任务看板并能据此协作。
  */
  import type { Context } from '@deepseek-ai/cordis'
+ import type {} from '@deepseek-ai/dsh-system-prompt'
 
  /** section 排序权重（越大越靠后） */
  const SECTION_ORDER = 200
@@ -14,14 +15,14 @@
 
  /**
   * 注册任务看板指引 section。
-  * 若部署未提供 systemPrompt 服务则静默跳过。
+  * 独立于 Web 路由，在 systemPrompt 可用期间注册。
   */
  export function registerTaskBoardPrompt(ctx: Context): void {
-   const sp = ctx.get('systemPrompt')
-   if (sp === undefined) return
-   sp.section({
-     name: 'plugin:bga-dsh-workbench-task-board',
-     order: SECTION_ORDER,
-     text: TASK_BOARD_GUIDANCE,
+   ctx.inject(['systemPrompt'], child => {
+     child.systemPrompt.section({
+       name: 'plugin:bga-dsh-workbench-task-board',
+       order: SECTION_ORDER,
+       text: TASK_BOARD_GUIDANCE,
+     })
    })
  }

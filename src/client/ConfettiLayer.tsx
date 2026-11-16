@@ -10,6 +10,7 @@
  import { useEffect, useRef } from 'react'
  import { runConfettiBurst, type BurstRect } from './confetti.ts'
  import { armConfettiSound, playConfettiSound } from './confetti-sound.ts'
+ import { CONFIG_CHANGED_EVENT } from './banner-config.ts'
 
  // 「彩带彩纸特效层」的注入 props：均为可选，方便测试时替换具体实现。
  export interface ConfettiLayerProps {
@@ -147,8 +148,9 @@
 
  // 计算彩带爆发区域：优先取对话滚动容器，其次取对话流容器，
  // 返回其相对视口的包围矩形；宽高为 0（尚未布局）时返回 null。
- function burstRect(): BurstRect | null {
-   const scope = document.querySelector(SCROLL_SELECTOR) ?? document.querySelector(FLOW_SELECTOR)
+ function burstRect(task = false): BurstRect | null {
+   const scope = (task ? document.querySelector('[data-bga-kb-view]') : null)
+     ?? document.querySelector(SCROLL_SELECTOR) ?? document.querySelector(FLOW_SELECTOR)
    if (scope === null) return null
    const rect = scope instanceof HTMLElement
      ? scope.getBoundingClientRect()
@@ -231,27 +233,31 @@
        active.clear()
      }
 
-     // 彩带总开关：默认开启；异步读取配置后按结果更新
      let confettiEnabled = true
-     void loadConfettiRef.current().then((enabled: boolean) => {
-       if (!disposed) confettiEnabled = enabled
-     })
-     // 音效开关：默认开启；异步读取配置后按结果更新（读取完成前不阻塞特效）
      let soundEnabled = true
-     void loadSoundRef.current().then(enabled => {
-       if (!disposed) soundEnabled = enabled
-     })
-     // 彩带完整配置（主题/强度/触发时机）：默认 success + gold-large 行为回退
      let confettiTheme: ConfettiConfig['theme'] = 'gold'
      let confettiIntensity: ConfettiConfig['intensity'] = 'large'
      let confettiTrigger: ConfettiConfig['trigger'] = 'success'
-     void loadConfigRef.current().then(config => {
-       if (!disposed) {
-         confettiTheme = config.theme
-         confettiIntensity = config.intensity
-         confettiTrigger = config.trigger
-       }
-     })
+     let revision = 0
+     const refresh = (): void => {
+       const current = ++revision
+       const active = () => !disposed && revision === current
+       void loadConfettiRef.current().then(enabled => {
+         if (active()) confettiEnabled = enabled
+       }).catch(() => {})
+       void loadSoundRef.current().then(enabled => {
+         if (active()) soundEnabled = enabled
+       }).catch(() => {})
+       void loadConfigRef.current().then(config => {
+         if (active()) {
+           confettiTheme = config.theme
+           confettiIntensity = config.intensity
+           confettiTrigger = config.trigger
+         }
+       }).catch(() => {})
+     }
+     refresh()
+     window.addEventListener(CONFIG_CHANGED_EVENT, refresh)
 
      // MutationObserver 核心回调：对话 AI 的输出是逐步 append 到 DOM 的，
      // 每次有新增节点就解析其中的消息行，判断是否有“整轮完成”可以庆祝。
@@ -318,8 +324,9 @@
      const disarmSound = armConfettiSound()
      // 监听任务执行完成事件：根据执行结果触发不同强度的彩带
      const onTaskExecution = (e: Event): void => {
+       if (!confettiEnabled) return
        const detail = (e as CustomEvent).detail as { outcome?: string } | undefined
-       const rect = burstRect()
+       const rect = burstRect(true)
        if (rect === null) return
        if (detail?.outcome === 'succeeded') {
          const dispose = fireRef.current(rect, { intensity: confettiIntensity, theme: confettiTheme })
@@ -334,6 +341,7 @@
      return () => {
        // 卸载清理：先解除手势监听，再停止观测并中断所有特效
        window.removeEventListener(TASK_EXECUTION_EVENT, onTaskExecution)
+       window.removeEventListener(CONFIG_CHANGED_EVENT, refresh)
        disarmSound()
        stop()
      }

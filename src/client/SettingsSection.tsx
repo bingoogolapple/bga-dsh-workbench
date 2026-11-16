@@ -40,6 +40,8 @@ import {
  
  // 彩带配置的状态形状。
  export interface ConfettiSectionState {
+   /** 是否启用彩带特效 */
+   readonly confettiShow?: boolean
    /** 整轮完成时是否播放庆祝音效 */
    readonly sound: boolean
    /** 彩带配色主题 */
@@ -152,6 +154,7 @@ import {
        latestTextRef.current = nextText
        setShow(typeof state.show === 'boolean' ? state.show : true)
        setSound(typeof state.sound === 'boolean' ? state.sound : true)
+       setConfettiShow(state.confettiShow ?? true)
       setTheme(state.theme ?? 'default')
       setIntensity(state.intensity ?? 'large')
       setTrigger(state.trigger ?? 'success')

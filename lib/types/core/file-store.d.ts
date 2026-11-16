@@ -12,7 +12,7 @@ export declare class FileTaskStore implements TaskStore {
     /** 读取任务列表：GET 端点并解析 JSON；任何失败都容错返回空数组 */
     load(): TaskRecord[];
     /** 整体写回：POST 序列化后的任务 JSON（宿主校验并落盘） */
-    save(tasks: readonly TaskRecord[]): void;
+    save(tasks: readonly TaskRecord[]): boolean;
     /** 清空任务：DELETE 端点的任务文件 */
     clear(): void;
 }

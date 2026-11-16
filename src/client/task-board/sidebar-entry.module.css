@@ -1,0 +1,53 @@
+.sessionActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+}
+
+.launcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 32px;
+  height: 32px;
+  margin: 2px auto 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+
+.launcher[data-wide] {
+  width: 100%;
+  justify-content: flex-start;
+  padding-inline: 8px;
+}
+
+.launcher:hover {
+  background: var(--dsw-specific-sidebar-nav-item-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.launcher[aria-pressed='true'] {
+  background: var(--dsw-specific-sidebar-nav-item-active);
+  color: var(--dsw-alias-label-primary);
+}
+
+.launcher:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 2px;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.launcher svg {
+  flex: none;
+}

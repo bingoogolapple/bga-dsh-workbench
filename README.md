@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/github/license/bingoogolapple/bga-dsh-workbench)](LICENSE)
 [![npm](https://img.shields.io/npm/v/bga-dsh-workbench.svg)](https://www.npmjs.com/package/bga-dsh-workbench)
 [![npm](https://img.shields.io/npm/dm/bga-dsh-workbench.svg)](https://www.npmjs.com/package/bga-dsh-workbench)
-[![支持的 DSH 版本：0.1.1-rc.1 · 0.1.1-rc.2 · 0.1.2-alpha.1 · 0.1.2-alpha.2 · 0.1.2-alpha.3 · 0.1.2-alpha.4 · 0.1.2-alpha.5](https://img.shields.io/badge/DSH-0.1.1--rc.1_%C2%B7_0.1.1--rc.2_%C2%B7_0.1.2--alpha.1_%C2%B7_0.1.2--alpha.2_%C2%B7_0.1.2--alpha.3_%C2%B7_0.1.2--alpha.4_%C2%B7_0.1.2--alpha.5-4d6bfe)](https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions)
+[![支持的 DSH 版本：0.2.2-rc.3](https://img.shields.io/badge/DSH-0.2.2--rc.3-4d6bfe)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-rc.3)
 
 [English](README.en.md) | 中文
 
@@ -67,7 +67,7 @@
 - **定时执行**：支持 5 段 cron 表达式（如 `0 23 * * *` 每天 23 点），并内置「每天 09:00 / 每小时 / 每 10 分钟 / 每周一 09:00」等常用预设。
 - **组织管理**：任务可设优先级（高 / 中 / 低）、分类与日期；新建时可从「快捷句式」一键填入常用标题模板。
 - **好用的细节**：顶部搜索框按标题/描述筛选；「快速添加」框回车即建待办；已归档任务可随时恢复。
-- **执行记录**：每个可执行任务都有执行历史，可回看当时生成的对话会话。
+- **执行记录**：每次手动或定时运行会在目标工作区创建独立会话，可从执行历史回看。显式选择的 Agent 预设在建会话时应用，默认项跟随宿主当前配置。
 - **周矩阵增强**（把周计划当工作台用）：
   - **周起始日**：可设周一或周日开头；
   - **分类管理**：内置业务/技术需求、运维类、综合管理类、期望得到的支持四类，可增删自定义；
@@ -100,7 +100,9 @@
 
 ## 软件使用者
 
-如果你只是想安装并使用这个插件，无需从源码构建。
+工作台 0.2.0 适配 DSH `0.2.2-rc.3`。使用旧 DSH 的用户可继续安装工作台 0.1.2。
+
+升级后沿用现有 `storageDir` 中的头像文件、任务、周矩阵和学习数据。工作台设置通过当前 profile 的插件配置保存，旧版偏好可在设置页重新配置。
 
 ### 安装（通过 DSH 插件机制）
 
@@ -113,8 +115,8 @@ dsh plugin --profile <你的 profile 名> add bga-dsh-workbench
 # 或从 Git 仓库安装
 dsh plugin --profile <你的 profile 名> add github:bingoogolapple/bga-dsh-workbench
 
-# 或本地路径安装（开发调试）
-dsh plugin --profile <你的 profile 名> add /path/to/bga-dsh-workbench
+# 或安装本地打包产物
+dsh plugin --profile <你的 profile 名> add /path/to/bga-dsh-workbench-0.2.0.tgz
 ```
 
 > 安装后重启 DSH 服务（或相应 profile），横幅、任务看板等能力即生效。
@@ -123,7 +125,7 @@ dsh plugin --profile <你的 profile 名> add /path/to/bga-dsh-workbench
 
 1. 打开 Harness Web 界面，在设置页的「工作台」分组中配置横幅文本、头像、彩带主题与音效、外语学习、打开方式偏好等。
 2. 从侧边栏「任务看板」入口进入看板，用周矩阵或五列看板管理任务；需要时开启定时执行。
-3. 在对话框中与「任务看板」协作，让 agent 帮你管理并执行任务。
+3. 在对话框中让 agent 协助拆解和起草任务。从侧栏任务看板创建、管理或运行任务。
 
 ## 软件维护者
 
@@ -147,7 +149,6 @@ bga-dsh-workbench/
 ├── lib/                          # 构建产物（esbuild 打包 + tsc 类型声明），发布时随包携带
 ├── build.mjs                     # 构建脚本：产出 lib/index.js（宿主）与 lib/client.js（浏览器）
 ├── cordis.patch.yml              # Cordis 组合补丁：把插件插入宿主组合
-├── dsh.plugin.json               # 插件清单（入口、注入、客户端平台）
 ├── package.json                  # 依赖与脚本
 ├── tsconfig.json                 # TypeScript 配置（含 declaration 输出）
 ├── vitest.config.ts              # 测试配置
@@ -160,12 +161,12 @@ bga-dsh-workbench/
 
 ### 从源码构建
 
-前置条件：Node.js ≥ 22.19、pnpm、本地已存在 `../deepseek-harness`（开发依赖以 `link:` 引用）。
+前置条件为 Node.js ≥ 24.9 和 pnpm。开发依赖锁定在 DSH `0.2.2-rc.3` 发布包。
 
 ```bash
-pnpm install          # 安装依赖（devDeps 链接到本地 deepseek-harness）
+pnpm install --frozen-lockfile
 pnpm typecheck       # tsc --noEmit 类型检查
-pnpm test            # vitest 运行单元测试（当前 145 个用例）
+pnpm test            # 运行 Vitest 回归测试
 pnpm build           # 执行 build.mjs：产出 lib/ 下的宿主/浏览器产物与类型声明
 pnpm check           # 依次运行 typecheck + test + build
 ```
@@ -184,12 +185,12 @@ dsh plugin --profile <你的 profile 名> add .
 
 ### 打包发布
 
-1. 确保 `package.json` 的 `files` 字段（已包含 `lib`、`dsh.plugin.json`、`cordis.patch.yml`、`LICENSE`、`README.md`、`README.en.md`）与实际产物一致；发布前先本地 `pnpm build` 生成 `lib/`。
+1. 确认 `package.json` 的 `files` 字段包含 `lib`、`cordis.patch.yml`、`LICENSE`、`README.md`、`README.en.md`。发布前运行 `pnpm build` 生成 `lib/`。
 2. 打版本 tag 并推送，例如：
 
    ```bash
-   git tag v0.0.1
-   git push origin v0.0.1
+   git tag v0.2.0
+   git push origin v0.2.0
    ```
 
 3. 使用者即可安装本插件：

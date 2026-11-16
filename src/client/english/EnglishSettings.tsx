@@ -807,14 +807,22 @@ export function EnglishSettings(_props: EnglishSettingsProps): JSX.Element {
           onMouseDown={e => { if (e.target === e.currentTarget) setViewingCard(null) }}
         >
           <div style={{
-            display: 'flex', flexDirection: 'column', gap: 0, width: 'min(520px, calc(100vw - 48px))', maxHeight: 'calc(100vh - 280px)',
+            display: 'flex', flexDirection: 'column', gap: 0, width: 'min(520px, calc(100vw - 48px))', maxHeight: '70dvh',
             background: 'var(--dsw-alias-bg-base, #fff)', border: '1px solid var(--dsw-alias-border-l2, #ddd)',
             borderRadius: 14, boxShadow: 'var(--dsw-shadow-lv3, 0 18px 60px rgba(0,0,0,0.35))',
             color: 'var(--dsw-alias-text-primary, #111)', overflow: 'hidden',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--dsw-alias-border-l2, #eee)' }}>
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{viewingCard.topic}</h2>
-              <button type="button" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--dsw-alias-label-tertiary, #888)', fontSize: 18, lineHeight: 1 }} onClick={() => setViewingCard(null)}>✕</button>
+            <div style={{ display: 'flex', flex: 'none', alignItems: 'center', gap: 8, padding: '14px 18px', borderBottom: '1px solid var(--dsw-alias-border-l2, #eee)' }}>
+              <h2 title={viewingCard.topic} style={{
+                flex: 1, minWidth: 0, margin: 0, fontSize: 15, fontWeight: 700,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{viewingCard.topic}</h2>
+              <button
+                type="button"
+                aria-label="关闭词库内容"
+                style={{ flex: 'none', background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--dsw-alias-label-tertiary, #888)', fontSize: 18, lineHeight: 1 }}
+                onClick={() => setViewingCard(null)}
+              >✕</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
               {viewingCard.items.map((it, idx) => (
@@ -841,7 +849,7 @@ export function EnglishSettings(_props: EnglishSettingsProps): JSX.Element {
                 </div>
               ))}
             </div>
-            <div style={{ padding: '10px 18px', borderTop: '1px solid var(--dsw-alias-border-l2, #eee)', textAlign: 'right' }}>
+            <div style={{ flex: 'none', padding: '10px 18px', borderTop: '1px solid var(--dsw-alias-border-l2, #eee)', textAlign: 'right' }}>
               <button type="button" style={{ padding: '5px 14px', fontSize: 12, color: 'var(--dsw-alias-text-primary, #111)', background: 'transparent', border: '1px solid var(--dsw-alias-border-l2, #ccc)', borderRadius: 8, cursor: 'pointer' }} onClick={() => setViewingCard(null)}>
                 关闭
               </button>

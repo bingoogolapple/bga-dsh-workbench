@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/github/license/bingoogolapple/bga-dsh-workbench)](LICENSE)
 [![npm](https://img.shields.io/npm/v/bga-dsh-workbench.svg)](https://www.npmjs.com/package/bga-dsh-workbench)
 [![npm](https://img.shields.io/npm/dm/bga-dsh-workbench.svg)](https://www.npmjs.com/package/bga-dsh-workbench)
-[![Supported DSH versions: 0.1.1-rc.1 · 0.1.1-rc.2 · 0.1.2-alpha.1 · 0.1.2-alpha.2 · 0.1.2-alpha.3 · 0.1.2-alpha.4 · 0.1.2-alpha.5](https://img.shields.io/badge/DSH-0.1.1--rc.1_%C2%B7_0.1.1--rc.2_%C2%B7_0.1.2--alpha.1_%C2%B7_0.1.2--alpha.2_%C2%B7_0.1.2--alpha.3_%C2%B7_0.1.2--alpha.4_%C2%B7_0.1.2--alpha.5-4d6bfe)](https://www.npmjs.com/package/@deepseek-ai/dsh?activeTab=versions)
+[![Supported DSH version: 0.2.2-rc.3](https://img.shields.io/badge/DSH-0.2.2--rc.3-4d6bfe)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-rc.3)
 
 English | [中文](README.md)
 
@@ -100,7 +100,9 @@ The "Task Board" feature of this plugin is a **customized derivative** of the [`
 
 ## For End Users
 
-If you just want to install and use this plugin, you don't need to build from source.
+Workbench 0.2.0 targets DSH `0.2.2-rc.3`. Older DSH installations can continue using Workbench 0.1.2.
+
+Upgrades keep existing avatar files, tasks, Week Matrix data, and learning progress under `storageDir`. Workbench preferences are saved in the current profile's plugin configuration. You can reconfigure preferences from older versions in Settings.
 
 ### Install (via the DSH plugin mechanism)
 
@@ -113,8 +115,8 @@ dsh plugin --profile <your profile name> add bga-dsh-workbench
 # Or install from a Git repository
 dsh plugin --profile <your profile name> add github:bingoogolapple/bga-dsh-workbench
 
-# Or install from a local path (for development/debugging)
-dsh plugin --profile <your profile name> add /path/to/bga-dsh-workbench
+# Or install the local package archive
+dsh plugin --profile <your profile name> add /path/to/bga-dsh-workbench-0.2.0.tgz
 ```
 
 > After installation, restart the DSH service (or the corresponding profile) for the banner, task board, and other capabilities to take effect.
@@ -147,7 +149,6 @@ bga-dsh-workbench/
 ├── lib/                          # build output (esbuild bundle + tsc type declarations), shipped with the package
 ├── build.mjs                     # build script: produces lib/index.js (host) and lib/client.js (browser)
 ├── cordis.patch.yml              # Cordis composition patch: plugs the plugin into the host composition
-├── dsh.plugin.json               # plugin manifest (entry, injections, client platform)
 ├── package.json                  # dependencies and scripts
 ├── tsconfig.json                 # TypeScript config (with declaration output)
 ├── vitest.config.ts              # test config
@@ -160,12 +161,12 @@ bga-dsh-workbench/
 
 ### Build from Source
 
-Prerequisites: Node.js ≥ 22.19, pnpm, and a local `../deepseek-harness` (devDependencies reference it via `link:`).
+Use Node.js ≥ 24.9 and pnpm. The development dependencies are pinned to the DSH `0.2.2-rc.3` release packages.
 
 ```bash
-pnpm install          # install dependencies (devDeps linked to local deepseek-harness)
+pnpm install --frozen-lockfile
 pnpm typecheck       # tsc --noEmit type checking
-pnpm test            # vitest runs the unit tests (currently 129 cases)
+pnpm test            # run the Vitest regression suite
 pnpm build           # run build.mjs: produces host/browser output and type declarations under lib/
 pnpm check           # runs typecheck + test + build in sequence
 ```
@@ -184,12 +185,12 @@ After editing the source, run `pnpm build` again and restart the DSH service for
 
 ### Packaging and Publishing
 
-1. Make sure the `files` field in `package.json` (which includes `lib`, `dsh.plugin.json`, `cordis.patch.yml`, `LICENSE`, `README.md`, `README.en.md`) matches the actual artifacts; run `pnpm build` locally to generate `lib/` before publishing.
+1. Make sure the `files` field in `package.json` (which includes `lib`, `cordis.patch.yml`, `LICENSE`, `README.md`, `README.en.md`) matches the actual artifacts; run `pnpm build` locally to generate `lib/` before publishing.
 2. Tag a version and push, for example:
 
    ```bash
-   git tag v0.0.1
-   git push origin v0.0.1
+   git tag v0.2.0
+   git push origin v0.2.0
    ```
 
 3. Users can then install the plugin:

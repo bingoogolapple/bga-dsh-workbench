@@ -1,189 +1,45 @@
-/**
-  * 工作区条目菜单的「在 Finder/终端/VSCode 中打开」注入器（客户端）。
-  *
-  * 产品侧的工作区「⋯」下拉菜单（ui-workspace 的 ProjectRowItem）没有公开的
-  * 菜单扩展点，菜单项是写死的。本模块用 DOM 注入在不改动核心包的前提下，
-  * 在「重命名条目」上方插入三个打开按钮：
-  *   1. click 捕获阶段识别工作区行的「⋯」按钮，解析该工作区目录路径；
-  *   2. MutationObserver 观察到工作区菜单（含「删除工作区」项）出现时，
-  *      在「重命名」项之前注入按钮组；
-  *   3. 按钮点击后 POST /bga-dsh-workbench/open 交给宿主端跨平台执行。
-  * 菜单节点由产品组件持有并在关闭时卸载，注入的按钮随之消失，无需手动清理。
-  */
- import type { Context as ClientContext } from '@deepseek-ai/cordis'
- import type { IWorkspaces } from '@deepseek-ai/dsh-api-workspace-controller/client'
-import { openMenuLabels, extraOpenMenuItems, extraOpenLabel } from './open-prefs.ts'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
+import type { MenuAction } from '@deepseek-ai/dsh-client-ui-context-menu/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import { createElement } from 'react'
+import { EXTRA_OPEN_KINDS, extraOpenMenuItems, extraSettingKey, openMenuLabels } from './open-prefs.ts'
 
- /** 宿主打开端点的相对地址（与 src/routes.ts 的 /open 路由对应）。 */
- const OPEN_URL = '/bga-dsh-workbench/open'
+const OPEN_URL = '/bga-dsh-workbench/open'
+const CONFIG_URL = '/bga-dsh-workbench/config'
 
- /** 读取「打开方式」偏好的配置端点（/config 返回当前生效值）。 */
- const CONFIG_URL = '/bga-dsh-workbench/config'
+interface OpenActionIcon {
+  readonly viewBox?: string
+  readonly paths: readonly {
+    readonly d: string
+    readonly stroke?: boolean
+    readonly opacity?: number | string
+    readonly fill?: string
+  }[]
+}
 
- /** 注入按钮组在菜单上的自定义数据标记（防止同一菜单重复注入）。 */
- const INJECTED_MARK = 'data-bga-open-injected'
+function renderIcon(icon: OpenActionIcon) {
+  return createElement('svg', {
+    width: 16,
+    height: 16,
+    viewBox: icon.viewBox ?? '0 0 16 16',
+    fill: 'none',
+    'aria-hidden': true,
+  }, icon.paths.map((path, index) => createElement('path', {
+    key: index,
+    d: path.d,
+    fill: path.stroke ? 'none' : path.fill ?? 'currentColor',
+    opacity: path.opacity,
+    ...(path.stroke ? {
+      stroke: 'currentColor',
+      strokeWidth: 1.3,
+      strokeLinecap: 'round',
+      strokeLinejoin: 'round',
+    } : {}),
+  })))
+}
 
- /**
-  * 打开 kind → 可读应用名（错误提示前缀用）。附加 IDE 走 extraOpenLabel；
-  * finder/terminal/vscode 直接映射。
-  */
- export function openDisplayName(kind: string): string {
-   switch (kind) {
-     case 'finder': return 'Finder'
-     case 'terminal': return '终端'
-     case 'vscode': return 'VSCode'
-     default: return extraOpenLabel(kind)
-   }
- }
-
- /** 按钮组区域的自定义数据标记（供点击处理与测试定位）。 */
- const GROUP_MARK = 'data-bga-open-group'
-
- /**
- * 工作区行「⋯」按钮 aria-label 的中英文模板（来自 ui-workspace locales.ts）。
- * 注意中文模板的双引号是弯引号“ ”（U+201C/U+201D），且 {name} 可能本身含
- * 引号或空白，因此按「前缀 + 任意内容 + 后缀」宽容提取并 trim。
- */
- const WORKSPACE_ARIA_PATTERNS: readonly RegExp[] = [
-   /^工作区[“"「『]?\s*(.+?)\s*[”"」』]?的操作$/u,
-   /^Workspace actions for\s+(.+?)\s*$/u,
- ]
-
- /** 从「⋯」按钮的 aria-label 中提取工作区显示名；非工作区按钮返回 undefined。 */
- export function workspaceLabelFromAria(aria: string): string | undefined {
-   for (const pattern of WORKSPACE_ARIA_PATTERNS) {
-     const match = pattern.exec(aria)
-     if (match !== null) return match[1].trim()
-   }
-   return undefined
- }
-
-
- /** 取路径的 basename（兼容两种分隔符），用于按显示名兜底匹配。 */
- function basenameOf(path: string): string {
-   const trimmed = path.replace(/[/\\]+$/u, '')
-   const parts = trimmed.split(/[/\\]/u)
-   return parts[parts.length - 1] ?? path
- }
-
- /**
-  * 用工作区显示名在工作区列表中解析目录路径：
-  * 先精确匹配 title（含用户重命名后的标题），再兜底匹配路径 basename。
-  * 重名时取第一个匹配（产品允许重复标题）。
-  */
- export interface ResolvableWorkspace {
-   readonly workspaceId: string
-   readonly title?: string
-   readonly path?: string
- }
-
- export function resolveWorkspacePath(
-   items: readonly ResolvableWorkspace[],
-   label: string,
- ): string | undefined {
-   const byTitle = items.find(item => item.title === label)
-   if (byTitle !== undefined) return byTitle.path
-   return items.find(item => basenameOf(item.path ?? '') === label)?.path
- }
-
- /**
-  * 兜底解析：从「⋯」按钮所在的工作区行（role=treeitem）提取显示名。
-  * 行内标题文本节点是 .projectText span（CSS Modules 类名形如 hash_projectText，
-  * 属性选择器按子串匹配），其文本即该工作区的显示名。
-  */
- export function workspaceLabelFromRow(row: Element | null): string | undefined {
-   if (row === null) return undefined
-   const title = row.querySelector('[class*="projectText"] span')
-   const text = title?.textContent?.trim()
-   return text !== undefined && text.length > 0 ? text : undefined
- }
-
- /** 判断一个菜单节点是否为工作区菜单：含「删除工作区」项（会话菜单没有它）。 */
- function isWorkspaceMenu(menu: Element): boolean {
-   return /删除工作区|Delete workspace/u.test(menu.textContent ?? '')
- }
-
- /** 在菜单中定位「重命名」条目按钮（中英文都覆盖）。 */
- function findRenameItem(menu: Element): HTMLButtonElement | null {
-   const buttons = menu.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]')
-   for (const button of buttons) {
-     const text = button.textContent?.trim() ?? ''
-     if (text === '重命名' || text === 'Rename') return button
-   }
-   return null
- }
-
- /** 找到工作区菜单中的「删除工作区」项（把附加 IDE 分组插在它之后）。 */
- function findDeleteItem(menu: Element): HTMLButtonElement | null {
-   const buttons = menu.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]')
-   for (const button of buttons) {
-     const text = button.textContent?.trim() ?? ''
-     if (text === '删除工作区' || text === 'Delete Workspace' || text === '删除') return button
-   }
-   return null
- }
-
- /** 菜单项的样式（对齐产品 Menu.module.css 的 .item：min-h 40、pad 10/8、r10）。 */
- const itemStyle = (): Partial<CSSStyleDeclaration> => ({
-   display: 'flex',
-   alignItems: 'center',
-   gap: '8px',
-   width: '100%',
-   minHeight: '40px',
-   padding: '8px 10px',
-   border: 'none',
-   borderRadius: '10px',
-   background: 'transparent',
-   cursor: 'pointer',
-   fontSize: '14px',
-   lineHeight: '22px',
-   color: 'var(--dsw-alias-label-primary)',
-   textAlign: 'left',
- })
-
- /** 16×16 菜单图标定义：SVG path 数据（风格与产品图标一致，currentColor 着色）。 */
- interface OpenActionIcon {
-   /**
-    * 图标 path 列表。每个 path 有两种画法：
-    *   - 默认：path 填充 currentColor（用于实心剪影 / 圆点，如 Android 眼睛）；
-    *   - `stroke: true`：仅描边 currentColor（1.3 线宽、圆头圆角），用于细线轮廓
-    *     （如 Android 头部、微信气泡），二者可混用，便于更贴近官方标志造型。
-    * 多色图标（如 Android Studio 官方配色）可给单个 path 指定 `fill`。
-    * 自定义 viewBox（非 16×16，如 1024 原始坐标系）用 `viewBox` 覆盖。
-    */
-   readonly viewBox?: string
-   readonly paths: readonly { readonly d: string; readonly stroke?: boolean; readonly opacity?: string; readonly fill?: string }[]
-   }
-
-   /** 生成一个 16×16 的 SVG 图标元素（默认 fill=currentColor，随菜单文字颜色）。 */
-   function buildIcon(icon: OpenActionIcon): SVGSVGElement {
-   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-   svg.setAttribute('width', '16')
-   svg.setAttribute('height', '16')
-   svg.setAttribute('viewBox', icon.viewBox ?? '0 0 16 16')
-   svg.setAttribute('fill', 'none')
-   svg.setAttribute('aria-hidden', 'true')
-   for (const entry of icon.paths) {
-     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-     path.setAttribute('d', entry.d)
-     if (entry.stroke === true) {
-       // 描边画法：细线轮廓 + 圆头圆角，线条随菜单文字颜色
-       path.setAttribute('fill', 'none')
-       path.setAttribute('stroke', 'currentColor')
-       path.setAttribute('stroke-width', '1.3')
-       path.setAttribute('stroke-linecap', 'round')
-       path.setAttribute('stroke-linejoin', 'round')
-     } else {
-       path.setAttribute('fill', entry.fill ?? 'currentColor')
-     }
-     if (entry.opacity !== undefined) path.setAttribute('opacity', entry.opacity)
-     svg.appendChild(path)
-   }
-   return svg
-   }
-
- /** 在 Finder 中打开。 */
- const FINDER_ICON: OpenActionIcon = {
+/** 在 Finder 中打开。 */
+const FINDER_ICON: OpenActionIcon = {
    viewBox: '0 0 1024 1024',
    paths: [
      { d: 'M605.8432 102.4c-89.03424 136.17152-139.66592 288.06784-158.87488 448.6976l187.68768 0c-15.712 61.10592-25.31712 121.34272-27.05792 180.70784 99.50976-9.60384 186.8032-35.77728 240.07296-69.83936l31.424 40.15744c-73.33632 42.76992-168.49152 70.70976-271.49824 81.18528 1.5744 31.05152 5.0944 61.14944 10.4832 91.06432 0.7296 3.95776 1.46048 7.9168 2.26432 11.86816 0.05888 0.29952 0.11904 0.59904 0.17792 0.89856 3.17824 15.49952 6.97344 30.94144 11.31904 46.32192L1024 933.46176 1024 102.4 605.8432 102.4zM744.6528 351.18208l-53.25824 0 0-123.08352 53.25824 0L744.6528 351.18208z', fill: '#009FE8' },
@@ -192,7 +48,7 @@ import { openMenuLabels, extraOpenMenuItems, extraOpenLabel } from './open-prefs
  }
 
  /** 在终端中打开：取自官方图标（devicon 1024 viewBox）的终端窗口标志——圆角窗口 + >_ 提示符，currentColor 填充（不缩放）。 */
- const TERMINAL_ICON: OpenActionIcon = {
+const TERMINAL_ICON: OpenActionIcon = {
    viewBox: '0 0 1024 1024',
    paths: [
      { d: 'M514.2 514h-135c-1.2 0-2.2 0-3.4-0.2-1.2-0.2-2.2-0.2-3.2-0.4s-2.2-0.4-3.2-0.8-2-0.6-3.2-1.2c-1-0.4-2-0.8-3-1.4-1-0.6-2-1-2.8-1.8-1-0.6-1.8-1.2-2.6-2s-1.6-1.4-2.4-2.2c-0.8-0.8-1.6-1.6-2.2-2.4-0.8-0.8-1.4-1.8-2-2.6-0.6-1-1.2-1.8-1.8-2.8-0.6-1-1-2-1.4-3-0.4-1-0.8-2-1.2-3.2s-0.6-2.2-0.8-3.2c-0.2-1-0.4-2.2-0.4-3.2-0.2-1.2-0.2-2.2-0.2-3.4 0-1.2 0-2.2 0.2-3.4 0.2-1.2 0.2-2.2 0.4-3.2s0.4-2.2 0.8-3.2 0.6-2 1.2-3.2c0.4-1 0.8-2 1.4-3s1-2 1.8-2.8 1.2-1.8 2-2.6 1.4-1.6 2.2-2.4c0.8-0.8 1.6-1.6 2.4-2.2 0.8-0.8 1.8-1.4 2.6-2s1.8-1.2 2.8-1.8c1-0.6 2-1 3-1.4 1-0.4 2-0.8 3.2-1.2 1-0.4 2.2-0.6 3.2-0.8 1-0.2 2.2-0.4 3.2-0.4 1.2-0.2 2.2-0.2 3.4-0.2h135c1.2 0 2.2 0 3.4 0.2 1.2 0.2 2.2 0.2 3.2 0.4s2.2 0.4 3.2 0.8 2 0.6 3.2 1.2c1 0.4 2 0.8 3 1.4 1 0.6 2 1 2.8 1.8s1.8 1.2 2.6 2 1.6 1.4 2.4 2.2c0.8 0.8 1.6 1.6 2.2 2.4 0.8 0.8 1.4 1.8 2 2.6 0.6 1 1.2 1.8 1.8 2.8 0.6 1 1 2 1.4 3 0.4 1 0.8 2 1.2 3.2 0.4 1 0.6 2.2 0.8 3.2 0.2 1 0.4 2.2 0.4 3.2 0.2 1.2 0.2 2.2 0.2 3.4 0 1.2 0 2.2-0.2 3.4-0.2 1.2-0.2 2.2-0.4 3.2s-0.4 2.2-0.8 3.2-0.6 2-1.2 3.2c-0.4 1-0.8 2-1.4 3-0.6 1-1 2-1.8 2.8-0.6 1-1.2 1.8-2 2.6s-1.4 1.6-2.2 2.4c-0.8 0.8-1.6 1.6-2.4 2.2-0.8 0.8-1.8 1.4-2.6 2-1 0.6-1.8 1.2-2.8 1.8-1 0.6-2 1-3 1.4-1 0.4-2 0.8-3.2 1.2-1 0.4-2.2 0.6-3.2 0.8-1 0.2-2.2 0.4-3.2 0.4-1.2 0.2-2.2 0.2-3.4 0.2z m-337.4 0c-1.8 0-3.4-0.2-5.2-0.4-1.8-0.2-3.4-0.6-5-1.2s-3.2-1.2-4.8-2c-1.6-0.8-3-1.6-4.4-2.6-1.4-1-2.8-2.2-4-3.4-1.2-1.2-2.4-2.6-3.4-3.8-1-1.4-2-2.8-2.8-4.4-0.8-1.6-1.6-3.2-2-4.8-0.6-1.6-1-3.4-1.4-5s-0.6-3.4-0.6-5.2 0-3.4 0.2-5.2c0.2-1.8 0.6-3.4 1-5s1-3.2 1.8-4.8c0.8-1.6 1.6-3 2.6-4.6 1-1.4 2-2.8 3.2-4 1.2-1.2 2.4-2.4 3.8-3.6l135.8-108.6-135.8-108.6c-0.8-0.6-1.6-1.4-2.4-2.2-0.8-0.8-1.6-1.6-2.2-2.4-0.8-0.8-1.4-1.8-2-2.6-0.6-1-1.2-1.8-1.8-2.8s-1-2-1.4-3c-0.4-1-0.8-2-1.2-3.2-0.4-1-0.6-2.2-0.8-3.2-0.2-1-0.4-2.2-0.6-3.2-0.2-1-0.2-2.2-0.2-3.4 0-1.2 0-2.2 0.2-3.4 0-1.2 0.2-2.2 0.4-3.2s0.4-2.2 0.8-3.2 0.6-2.2 1-3.2 0.8-2 1.4-3c0.6-1 1-2 1.6-2.8 0.6-1 1.2-1.8 2-2.6s1.4-1.6 2.2-2.4c0.8-0.8 1.6-1.6 2.4-2.2 0.8-0.8 1.8-1.4 2.6-2 1-0.6 1.8-1.2 2.8-1.8 1-0.6 2-1 3-1.4 1-0.4 2-0.8 3.2-1.2 1-0.4 2.2-0.6 3.2-0.8 1-0.2 2.2-0.4 3.2-0.6 1-0.2 2.2-0.2 3.4-0.2 1.2 0 2.2 0 3.4 0.2 1.2 0 2.2 0.2 3.2 0.4s2.2 0.4 3.2 0.8 2.2 0.6 3.2 1 2 0.8 3 1.4c1 0.6 2 1 2.8 1.6 1 0.6 1.8 1.2 2.6 2l168.8 135c1 0.8 2 1.6 2.8 2.6 0.8 0.8 1.8 1.8 2.6 2.8 0.8 1 1.6 2 2.2 3 0.6 1 1.2 2.2 1.8 3.4 0.6 1.2 1 2.4 1.4 3.4 0.4 1.2 0.8 2.4 1 3.6 0.2 1.2 0.4 2.4 0.6 3.8 0.2 1.2 0.2 2.6 0.2 3.8 0 1.2 0 2.6-0.2 3.8-0.2 1.2-0.4 2.4-0.6 3.8-0.2 1.2-0.6 2.4-1 3.6-0.4 1.2-0.8 2.4-1.4 3.4-0.6 1.2-1.2 2.2-1.8 3.4-0.6 1-1.4 2-2.2 3s-1.6 2-2.6 2.8c-0.8 0.8-1.8 1.8-2.8 2.6L198 507c-3 2.4-6.2 4.2-10 5.4-3.6 1-7.4 1.6-11.2 1.6zM885.4 41.6H143c-2.2 0-4.4 0-6.6 0.2s-4.4 0.2-6.6 0.4c-2.2 0.2-4.4 0.4-6.6 0.8l-6.6 1.2c-2.2 0.4-4.4 1-6.4 1.4-2.2 0.6-4.2 1.2-6.4 1.8-2.2 0.6-4.2 1.4-6.2 2-2 0.8-4.2 1.6-6.2 2.4-2 0.8-4 1.8-6 2.6l-6 3c-2 1-3.8 2.2-5.8 3.2-1.8 1.2-3.8 2.4-5.6 3.6-1.8 1.2-3.6 2.4-5.4 3.8-1.8 1.4-3.6 2.6-5.2 4s-3.4 2.8-5 4.4-3.2 3-4.8 4.6-3 3.2-4.6 4.8c-1.4 1.6-3 3.4-4.4 5s-2.8 3.4-4 5.2c-1.4 1.8-2.6 3.6-3.8 5.4-1.2 1.8-2.4 3.8-3.6 5.6-1.2 1.8-2.2 3.8-3.2 5.8l-3 6c-1 2-1.8 4-2.6 6s-1.6 4-2.4 6.2c-0.8 2-1.4 4.2-2 6.2-0.6 2.2-1.2 4.2-1.8 6.4-0.6 2.2-1 4.2-1.4 6.4l-1.2 6.6c-0.4 2.2-0.6 4.4-0.8 6.6-0.2 2.2-0.4 4.4-0.4 6.6C8 172 8 174.2 8 176.6v675c0 2.2 0 4.4 0.2 6.6 0.2 2.2 0.2 4.4 0.4 6.6 0.2 2.2 0.4 4.4 0.8 6.6l1.2 6.6c0.4 2.2 1 4.4 1.4 6.4 0.6 2.2 1.2 4.2 1.8 6.4 0.6 2.2 1.4 4.2 2 6.2 0.8 2 1.6 4.2 2.4 6.2 0.8 2 1.8 4 2.6 6l3 6c1 2 2.2 3.8 3.2 5.8 1.2 1.8 2.4 3.8 3.6 5.6 1.2 1.8 2.4 3.6 3.8 5.4 1.4 1.8 2.6 3.6 4 5.2 1.4 1.8 2.8 3.4 4.4 5 1.4 1.6 3 3.2 4.6 4.8 1.6 1.6 3.2 3 4.8 4.6s3.4 3 5 4.4c1.8 1.4 3.4 2.8 5.2 4 1.8 1.4 3.6 2.6 5.4 3.8 1.8 1.2 3.8 2.4 5.6 3.6 1.8 1.2 3.8 2.2 5.8 3.2l6 3c2 1 4 1.8 6 2.6s4 1.6 6.2 2.4c2 0.8 4.2 1.4 6.2 2 2.2 0.6 4.2 1.2 6.4 1.8 2.2 0.6 4.2 1 6.4 1.4l6.6 1.2c2.2 0.4 4.4 0.6 6.6 0.8 2.2 0.2 4.4 0.4 6.6 0.4s4.4 0.2 6.6 0.2h742.4c2.2 0 4.4 0 6.6-0.2s4.4-0.2 6.6-0.4c2.2-0.2 4.4-0.4 6.6-0.8l6.6-1.2c2.2-0.4 4.4-1 6.4-1.4 2.2-0.6 4.2-1.2 6.4-1.8 2.2-0.6 4.2-1.4 6.2-2s4.2-1.6 6.2-2.4c2-0.8 4-1.8 6-2.6l6-3c2-1 3.8-2.2 5.8-3.2 1.8-1.2 3.8-2.4 5.6-3.6 1.8-1.2 3.6-2.4 5.4-3.8 1.8-1.4 3.6-2.6 5.2-4 1.8-1.4 3.4-2.8 5-4.4s3.2-3 4.8-4.6c1.6-1.6 3-3.2 4.6-4.8 1.4-1.6 3-3.4 4.4-5 1.4-1.8 2.8-3.4 4-5.2 1.4-1.8 2.6-3.6 3.8-5.4 1.2-1.8 2.4-3.8 3.6-5.6 1.2-1.8 2.2-3.8 3.2-5.8l3-6c1-2 1.8-4 2.6-6s1.6-4 2.4-6.2c0.8-2 1.4-4.2 2-6.2s1.2-4.2 1.8-6.4c0.6-2.2 1-4.2 1.4-6.4l1.2-6.6c0.4-2.2 0.6-4.4 0.8-6.6 0.2-2.2 0.4-4.4 0.4-6.6 0.2-2.2 0.2-4.4 0.2-6.6V176.6c0-2.2 0-4.4-0.2-6.6-0.2-2.2-0.2-4.4-0.4-6.6-0.2-2.2-0.4-4.4-0.8-6.6l-1.2-6.6c-0.4-2.2-1-4.4-1.4-6.4-0.6-2.2-1.2-4.2-1.8-6.4-0.6-2.2-1.4-4.2-2-6.2-0.8-2-1.6-4.2-2.4-6.2-0.8-2-1.8-4-2.6-6l-3-6c-1-2-2.2-3.8-3.2-5.8-1.2-1.8-2.4-3.8-3.6-5.6-1.2-1.8-2.4-3.6-3.8-5.4-1.4-1.8-2.6-3.6-4-5.2-1.4-1.8-2.8-3.4-4.4-5-1.4-1.6-3-3.2-4.6-4.8s-3.2-3-4.8-4.6c-1.6-1.4-3.4-3-5-4.4-1.8-1.4-3.4-2.8-5.2-4s-3.6-2.6-5.4-3.8c-1.8-1.2-3.8-2.4-5.6-3.6-1.8-1.2-3.8-2.2-5.8-3.2l-6-3c-2-1-4-1.8-6-2.6s-4-1.6-6.2-2.4c-2-0.8-4.2-1.4-6.2-2-2.2-0.6-4.2-1.2-6.4-1.8-2.2-0.6-4.2-1-6.4-1.4l-6.6-1.2c-2.2-0.4-4.4-0.6-6.6-0.8-2.2-0.2-4.4-0.4-6.6-0.4s-4-0.4-6.4-0.4z' },
@@ -200,7 +56,7 @@ import { openMenuLabels, extraOpenMenuItems, extraOpenLabel } from './open-prefs
  }
 
  /** 在 VSCode 中打开：官方 VSCode 标志（1024 viewBox，蓝色 #2196F3，不缩放）。 */
- const VSCODE_ICON: OpenActionIcon = {
+const VSCODE_ICON: OpenActionIcon = {
    viewBox: '0 0 1024 1024',
    paths: [
      { d: 'M746.222933 102.239573l-359.799466 330.820267L185.347413 281.4976 102.2464 329.864533l198.20544 182.132054-198.20544 182.132053 83.101013 48.510293 201.076054-151.558826 359.799466 330.676906 175.527254-85.251413V187.4944z m0 217.57952v384.341334l-255.040853-192.177494z', fill: '#2196F3' },
@@ -321,340 +177,96 @@ const GOLAND_ICON: OpenActionIcon = {
   ],
 }
 
-/** 附加 IDE 的 kind → 专属图标映射；未知 kind 兜底用 IntelliJ 的「I」（不应发生）。 */
-function extraOpenIcon(kind: string): OpenActionIcon {
-  switch (kind) {
-    case 'android-studio': return ANDROID_STUDIO_ICON
-    case 'xcode': return XCODE_ICON
-    case 'wechat-devtools': return WECHAT_DEVTOOLS_ICON
-    case 'intellij-idea': return INTELLIJ_IDEA_ICON
-    case 'deveco-studio': return DEVECO_STUDIO_ICON
-    case 'webstorm': return WEBSTORM_ICON
-    case 'pycharm': return PYCHARM_ICON
-    case 'goland': return GOLAND_ICON
-    default: return INTELLIJ_IDEA_ICON
-  }
+
+const icons: Record<string, OpenActionIcon> = {
+  finder: FINDER_ICON,
+  terminal: TERMINAL_ICON,
+  vscode: VSCODE_ICON,
+  'android-studio': ANDROID_STUDIO_ICON,
+  xcode: XCODE_ICON,
+  'wechat-devtools': WECHAT_DEVTOOLS_ICON,
+  'intellij-idea': INTELLIJ_IDEA_ICON,
+  'deveco-studio': DEVECO_STUDIO_ICON,
+  webstorm: WEBSTORM_ICON,
+  pycharm: PYCHARM_ICON,
+  goland: GOLAND_ICON,
 }
 
- /** 三个打开按钮的图标载体（label 在注入时按偏好动态生成）。 */
- const OPEN_ACTIONS: readonly { kind: 'finder' | 'terminal' | 'vscode'; label: string; icon: OpenActionIcon }[] = [
-   { kind: 'finder', label: '在 Finder 中打开', icon: FINDER_ICON },
-   { kind: 'terminal', label: '在终端中打开', icon: TERMINAL_ICON },
-   { kind: 'vscode', label: '在 VSCode 中打开', icon: VSCODE_ICON },
- ]
+const iconKey = (kind: string): string => `bga-workbench.open-${kind}`
 
- /** 创建注入按钮组：分隔线 + 三个按钮，按钮点击后调用 onRequest。 */
- function buildButtonGroup(
-  onRequest: (kind: string, path: string) => void,
-   path: string,
-    labels: readonly { kind: 'finder' | 'terminal' | 'vscode'; label: string; icon: OpenActionIcon }[] = OPEN_ACTIONS,
- ): HTMLElement {
-   const group = document.createElement('div')
-   group.setAttribute(GROUP_MARK, '')
-
-   const separator = document.createElement('div')
-   separator.setAttribute('role', 'separator')
-   separator.style.height = '1px'
-   separator.style.margin = '4px 2px'
-   separator.style.background = 'var(--dsw-alias-border-l1)'
-   group.appendChild(separator)
-
-   for (const action of labels) {
-     const button = document.createElement('button')
-     button.type = 'button'
-     button.setAttribute('role', 'menuitem')
-     button.setAttribute('data-bga-open-kind', action.kind)
-     Object.assign(button.style, itemStyle())
-     // 图标容器（16px，颜色 tertiary，与产品 .itemIcon 一致）
-     const iconWrap = document.createElement('span')
-     iconWrap.style.display = 'inline-flex'
-     iconWrap.style.flex = 'none'
-     iconWrap.style.width = '16px'
-     iconWrap.style.height = '16px'
-     iconWrap.style.alignItems = 'center'
-     iconWrap.style.justifyContent = 'center'
-     iconWrap.style.color = 'var(--dsw-alias-label-tertiary)'
-      // 间距由 button 自身的 gap:8px 提供（与产品菜单项一致），勿再加 margin
-     iconWrap.appendChild(buildIcon(action.icon))
-     button.appendChild(iconWrap)
-     // 文本标签占满剩余宽度（对齐产品 .itemLabel，超长省略）
-     const label = document.createElement('span')
-     label.textContent = action.label
-     label.style.flex = '1'
-     label.style.minWidth = '0'
-     label.style.overflow = 'hidden'
-     label.style.textOverflow = 'ellipsis'
-     label.style.whiteSpace = 'nowrap'
-     button.appendChild(label)
-     // hover 高亮与产品菜单项一致
-     button.addEventListener('mouseenter', () => {
-       button.style.background = 'var(--dsw-alias-interactive-bg-hover)'
-     })
-     button.addEventListener('mouseleave', () => {
-       button.style.background = 'transparent'
-     })
-     button.addEventListener('click', (event) => {
-       event.stopPropagation()
-       event.preventDefault()
-       onRequest(action.kind, path)
-     })
-     group.appendChild(button)
-   }
-   return group
- }
-
-
-/**
- * 创建「附加 IDE 打开」分组：分隔线 + 每个已开启的附加 IDE 一个按钮。
- * 按钮图标按 kind 取专属图标（尽力贴近各 IDE 官方标志的单色化造型）。
- */
-function buildExtraOpenGroup(
-  items: readonly { kind: string; label: string }[],
-  path: string,
-  onRequest: (kind: string, path: string) => void,
-): HTMLElement {
-  const group = document.createElement('div')
-  group.setAttribute(GROUP_MARK, '')
-
-  const separator = document.createElement('div')
-  separator.setAttribute('role', 'separator')
-  separator.style.height = '1px'
-  separator.style.margin = '4px 2px'
-  separator.style.background = 'var(--dsw-alias-border-l1)'
-  group.appendChild(separator)
-
-  for (const item of items) {
-    const button = document.createElement('button')
-    button.type = 'button'
-    button.setAttribute('role', 'menuitem')
-    button.setAttribute('data-bga-open-kind', item.kind)
-    Object.assign(button.style, itemStyle())
-    const iconWrap = document.createElement('span')
-    iconWrap.style.display = 'inline-flex'
-    iconWrap.style.flex = 'none'
-    iconWrap.style.width = '16px'
-    iconWrap.style.height = '16px'
-    iconWrap.style.alignItems = 'center'
-    iconWrap.style.justifyContent = 'center'
-    iconWrap.style.color = 'var(--dsw-alias-label-tertiary)'
-    iconWrap.appendChild(buildIcon(extraOpenIcon(item.kind)))
-    button.appendChild(iconWrap)
-    const label = document.createElement('span')
-    label.textContent = item.label
-    label.style.flex = '1'
-    label.style.minWidth = '0'
-    label.style.overflow = 'hidden'
-    label.style.textOverflow = 'ellipsis'
-    label.style.whiteSpace = 'nowrap'
-    button.appendChild(label)
-    button.addEventListener('mouseenter', () => {
-      button.style.background = 'var(--dsw-alias-interactive-bg-hover)'
-    })
-    button.addEventListener('mouseleave', () => {
-      button.style.background = 'transparent'
-    })
-    button.addEventListener('click', (event) => {
-      event.stopPropagation()
-      event.preventDefault()
-      onRequest(item.kind, path)
-    })
-    group.appendChild(button)
-  }
-  return group
-}
-
- /**
-  * 向一个工作区菜单注入打开按钮组（在「重命名」项之前）。
-  * 幂等：已注入过的菜单直接跳过；找不到重命名项或非工作区菜单时不注入。
-  */
- export function injectOpenButtons(
-   menu: Element,
-   path: string,
-   onRequest: (kind: string, path: string) => void,
-   prefs: { terminal?: string; editor?: string } = {},
-   openExtra?: { androidStudio?: boolean; xcode?: boolean; wechatDevtools?: boolean; intellijIdea?: boolean; devecoStudio?: boolean; webstorm?: boolean; pycharm?: boolean; goland?: boolean },
-   ): boolean {
-   if (menu.hasAttribute(INJECTED_MARK)) return false
-   if (!isWorkspaceMenu(menu)) return false
-   const renameItem = findRenameItem(menu)
-   if (renameItem === null || renameItem.parentElement === null) return false
-   // 按当前偏好生成按钮文案（如「在 iTerm 中打开」），图标从 OPEN_ACTIONS 按 kind 取
-   const labels = openMenuLabels(prefs).map(action => ({
-     ...action,
-     icon: OPEN_ACTIONS.find(item => item.kind === action.kind)!.icon,
-   }))
-   // 定位「删除工作区」项：所有打开类分组都插在它之后（菜单尾部下方）
-   const deleteItem = findDeleteItem(menu)
-   const owner = deleteItem?.parentElement ?? renameItem.parentElement
-   if (owner === null) {
-     menu.setAttribute(INJECTED_MARK, '')
-     return true
-   }
-   // 1) finder/terminal/vscode 组插在「删除工作区」之后
-   const openGroup = buildButtonGroup(onRequest, path, labels)
-   owner.insertBefore(openGroup, deleteItem !== null ? deleteItem.nextSibling : null)
-   // 2) 附加 IDE 组插在 open 组之后（删除工作区更下方）
-   const extraItems = openExtra !== undefined ? extraOpenMenuItems(openExtra) : []
-   if (extraItems.length > 0) {
-     const extraGroup = buildExtraOpenGroup(extraItems, path, onRequest)
-     owner.insertBefore(extraGroup, openGroup.nextSibling)
-   }
-   menu.setAttribute(INJECTED_MARK, '')
-   return true
- }
-
- /**
-  * 安装工作区菜单打开注入器：
-  * 1. click 捕获识别工作区「⋯」按钮并记录路径；
-  * 2. MutationObserver 观察到工作区菜单出现时注入按钮组；
-  * 3. 按钮点击走 fetch 请求宿主 /open 端点。
-  * 返回清理函数（随插件卸载调用）。
-  */
- /**
-  * 读取当前生效的「打开方式」偏好（/config 的 open 字段）。
-  * 请求失败或缺省时回退到空串（= 平台默认），保证注入永不中断。
-  */
- async function loadOpenPrefs(): Promise<{
-   terminal: string
-   editor: string
-   openExtra?: { androidStudio?: boolean; xcode?: boolean; wechatDevtools?: boolean; intellijIdea?: boolean; devecoStudio?: boolean; webstorm?: boolean; pycharm?: boolean; goland?: boolean }
- }> {
-   try {
-     const response = await fetch(CONFIG_URL, { cache: 'no-store' })
-     if (!response.ok) return { terminal: '', editor: '', openExtra: {} }
-     const value = await response.json() as {
-       open?: { terminal?: unknown; editor?: unknown }
-       openExtra?: { androidStudio?: unknown; xcode?: unknown; wechatDevtools?: unknown; intellijIdea?: unknown; devecoStudio?: unknown; webstorm?: unknown; pycharm?: unknown; goland?: unknown }
-     }
-     const open = value.open ?? {}
-     const openExtra = value.openExtra ?? {}
-     return {
-       terminal: typeof open.terminal === 'string' ? open.terminal : '',
-       editor: typeof open.editor === 'string' ? open.editor : '',
-       openExtra: {
-         androidStudio: typeof openExtra.androidStudio === 'boolean' ? openExtra.androidStudio : true,
-         xcode: typeof openExtra.xcode === 'boolean' ? openExtra.xcode : true,
-         wechatDevtools: typeof openExtra.wechatDevtools === 'boolean' ? openExtra.wechatDevtools : true,
-         intellijIdea: typeof openExtra.intellijIdea === 'boolean' ? openExtra.intellijIdea : true,
-         devecoStudio: typeof openExtra.devecoStudio === 'boolean' ? openExtra.devecoStudio : true,
-         webstorm: typeof openExtra.webstorm === 'boolean' ? openExtra.webstorm : true,
-         pycharm: typeof openExtra.pycharm === 'boolean' ? openExtra.pycharm : true,
-         goland: typeof openExtra.goland === 'boolean' ? openExtra.goland : true,
-       },
-     }
-   } catch {
-     return { terminal: '', editor: '', openExtra: {} }
-   }
- }
-
- export function mountWorkspaceOpenMenu(ctx: ClientContext): () => void {
-   const workspaces = ctx.workspaces as unknown as IWorkspaces | undefined
-   // 最近一次点击的工作区目录路径；菜单出现时用它注入
-   let currentPath: string | undefined
-
-   // 点击捕获：工作区「⋯」按钮打开菜单的路径来源。
-   // 先解析 aria-label（带工作区显示名），失败时回退到所在行的标题文本。
-   const onCaptureClick = (event: MouseEvent): void => {
-     const target = event.target
-     if (!(target instanceof Element)) return
-     const button = target.closest('button[aria-label]')
-     if (button === null) return
-     const aria = button.getAttribute('aria-label') ?? ''
-     let label = workspaceLabelFromAria(aria)
-     if (label === undefined) {
-       label = workspaceLabelFromRow(button.closest('[role="treeitem"]'))
-     }
-     // 只有当按钮来自工作区行（解析得出显示名）时才解析路径；
-     // 会话「⋯」等其它按钮会清空残留路径，避免误注入到错误菜单。
-     if (label === undefined) {
-       currentPath = undefined
-       return
-     }
-     const items = workspaces?.list.getSnapshot().items ?? []
-     currentPath = resolveWorkspacePath(items, label)
-     if (currentPath === undefined) {
-       console.warn(`[bga-dsh-workbench] could not resolve workspace path for label "${label}"`)
-     }
-   }
-   document.addEventListener('click', onCaptureClick, true)
-
-  /**
-   * 在页面右下角弹出一条轻量 toast（自包含，必要时重复使用同一节点）。
-   * 用于把「打开失败 / 未安装」等错误直接呈现给用户，而非只写控制台。
-   */
-  let toastEl: HTMLDivElement | null = null
-  let toastTimer: ReturnType<typeof setTimeout> | undefined
-  function showToast(message: string, displayName: string): void {
-    if (toastEl === null) {
-      toastEl = document.createElement('div')
-      toastEl.setAttribute('role', 'status')
-      toastEl.style.cssText = [
-        'position: fixed',
-        'z-index: 2147483647',
-        'right: 16px',
-        'bottom: 16px',
-        'max-width: 360px',
-        'padding: 10px 14px',
-        'border-radius: 8px',
-        'background: #cf222e',
-        'color: #ffffff',
-        'font: 13px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif',
-        'box-shadow: 0 4px 16px rgba(0,0,0,0.28)',
-      ].join(';')
-      document.body.appendChild(toastEl)
-    }
-    toastEl.textContent = `「${displayName}」打开失败：${message}`
-    toastEl.style.display = 'block'
-    if (toastTimer !== undefined) clearTimeout(toastTimer)
-    toastTimer = setTimeout(() => {
-      if (toastEl !== null) toastEl.style.display = 'none'
-    }, 6000)
-  }
-
-  // 请求宿主打开目录；失败时弹 toast 并在控制台给出可读原因
-  const requestOpen = (kind: string, path: string): void => {
-    void fetch(OPEN_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kind, path }),
-    }).then(async (response) => {
-      const value = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null
-      if (value?.ok !== true) {
-        const reason = value?.error ?? `HTTP ${response.status}`
-        console.warn(`[bga-dsh-workbench] open ${kind} ${path} failed:`, reason)
-        showToast(reason, openDisplayName(kind))
+async function loadOpenPrefs(signal: AbortSignal): Promise<{
+  terminal?: string
+  editor?: string
+  openExtra: Record<string, boolean>
+}> {
+  const openExtra: Record<string, boolean> = {}
+  try {
+    const response = await fetch(CONFIG_URL, { cache: 'no-store', signal })
+    if (response.ok) {
+      const value = await response.json() as {
+        open?: { terminal?: unknown; editor?: unknown }
+        openExtra?: Record<string, unknown>
       }
-    }).catch((error: unknown) => {
-      const reason = String(error instanceof Error ? error.message : error)
-      console.warn(`[bga-dsh-workbench] open ${kind} ${path} failed:`, error)
-      showToast(reason, openDisplayName(kind))
-    })
+      for (const kind of EXTRA_OPEN_KINDS) {
+        const key = extraSettingKey(kind)
+        const enabled = value.openExtra?.[key]
+        if (typeof enabled === 'boolean') openExtra[key] = enabled
+      }
+      return {
+        terminal: typeof value.open?.terminal === 'string' ? value.open.terminal : undefined,
+        editor: typeof value.open?.editor === 'string' ? value.open.editor : undefined,
+        openExtra,
+      }
+    }
+  } catch {
+    signal.throwIfAborted()
   }
+  return { openExtra }
+}
 
-   // 菜单出现时注入按钮组（菜单关闭时产品组件会卸载整个节点，无需手动清理）。
-   // 注入前异步读取当前偏好，让按钮文案反映用户配置（如「在 iTerm 中打开」）。
-   let prefLoading = false // 防抖：同一菜单一次只发一个 /config 请求
-   const observer = new MutationObserver(() => {
-     if (currentPath === undefined) return
-     if (prefLoading) return
-     prefLoading = true
-     void loadOpenPrefs().then(prefs => {
-       prefLoading = false
-      if (currentPath === undefined) return // 菜单已关闭或目标已变，放弃注入
-       for (const menu of document.querySelectorAll<Element>('[role="menu"]')) {
-         injectOpenButtons(menu, currentPath, requestOpen, prefs, prefs.openExtra)
-       }
-     })
-   })
-   observer.observe(document.body, { childList: true, subtree: true })
+async function openPath(kind: string, path: string): Promise<void> {
+  const response = await fetch(OPEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind, path }),
+  })
+  const value = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null
+  if (!response.ok || value?.ok !== true) throw new Error(value?.error ?? `HTTP ${response.status}`)
+}
 
-   return () => {
-     document.removeEventListener('click', onCaptureClick, true)
-     observer.disconnect()
-     if (toastTimer !== undefined) clearTimeout(toastTimer)
-     if (toastEl !== null) {
-       toastEl.remove()
-       toastEl = null
-     }
-   }
- }
+/** Register actions against the workspace captured by the host menu gesture. */
+export function registerWorkspaceOpenMenu(ctx: ClientContext): void {
+  ctx.slots.inject('contextMenu.icon', function* () {
+    for (const [kind, icon] of Object.entries(icons)) {
+      yield ctx.slots.register({ name: 'contextMenu.icon', key: iconKey(kind) }, () => renderIcon(icon))
+    }
+  })
+
+  ctx.effect(() => ctx.contextMenus.register({
+    id: 'bga-workbench.open-workspace',
+    target: 'workspace',
+    order: 400,
+    async resolve({ path }, signal): Promise<readonly MenuAction[]> {
+      const prefs = await loadOpenPrefs(signal)
+      signal.throwIfAborted()
+      const action = ({ kind, label }: { kind: string; label: string }, separatorBefore: boolean): MenuAction => ({
+        id: kind,
+        label,
+        icon: { key: iconKey(kind) },
+        separatorBefore,
+        async run() {
+          try {
+            await openPath(kind, path)
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error)
+            ctx.contextMenus.notify(`「${label}」失败：${reason}`)
+          }
+        },
+      })
+      return [
+        ...openMenuLabels(prefs).map((item, index) => action(item, index === 0)),
+        ...extraOpenMenuItems(prefs.openExtra).map((item, index) => action(item, index === 0)),
+      ]
+    },
+  }), 'bga-dsh-workbench: workspace open menu')
+}

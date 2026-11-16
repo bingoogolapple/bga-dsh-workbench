@@ -13,8 +13,11 @@ export interface SchedulerDeps {
     applySchedule(id: string, nextRunAt: number | undefined, lastTriggeredAt: number | undefined): void;
     /** tick 间隔毫秒数（默认 60_000） */
     tickMs?: number;
-    /** 可选的就绪判断：未就绪时跳过本 tick */
-    ready?: () => boolean;
+    /** 等待运行时目录就绪，首次就绪时立即补扫。 */
+    readiness?: {
+        getSnapshot(): boolean;
+        subscribe(listener: () => void): () => void;
+    };
     /** 可选环境（浏览器 document）：用于挂 visibilitychange 监听 */
     environment?: {
         addEventListener(type: 'visibilitychange', listener: () => void): void;
@@ -29,6 +32,7 @@ export declare class SchedulerService {
     private timer;
     /** visibilitychange 监听器（用于页面恢复可见时补扫） */
     private environmentListener;
+    private unsubscribeReadiness;
     /** 是否已释放（dispose 后不再工作） */
     private disposed;
     /** 是否已启动 */

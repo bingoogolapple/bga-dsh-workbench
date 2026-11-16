@@ -7,8 +7,34 @@
  * cheaper than driving a full agent session just to emit a JSON word list.
  */
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
+import type { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+
+type EnglishModelSelection = { provider: string; model: string }
+
+export function currentEnglishModel(ctx: Context): EnglishModelSelection | undefined {
+  return ctx.get('agentDefaultModel')?.currentSelection()
+}
+
+export async function saveEnglishDefaultModel(ctx: Context, selection: EnglishModelSelection): Promise<void> {
+  const defaults = ctx.get('agentDefaultModel')
+  if (defaults === undefined) return
+
+  const current = defaults.currentSelection()
+  let reasoningEffort = current.provider === selection.provider && current.model === selection.model
+    ? current.reasoningEffort
+    : undefined
+  if (reasoningEffort === undefined) {
+    reasoningEffort = await ctx.get('llm')?.resolveModelInfo(selection.provider, selection.model)
+      .then(model => model?.reasoning?.defaultEffort)
+      .catch(() => undefined)
+  }
+  await defaults.saveSelection({
+    ...selection,
+    ...reasoningEffort === undefined ? {} : { reasoningEffort },
+  })
+}
 
 /** The LLM instruction used to produce a topic word list. */
 const SYSTEM_PROMPT = '你是专注为中国英语学习者生成词汇学习内容的助手。只输出用户要求的 JSON，不要任何解释。'
@@ -44,28 +70,22 @@ function describeFailure(reason: { kind: string; failure?: { message?: string; c
 export async function generateEnglishText(
   ctx: Context,
   topic: string,
-  selection?: { provider: string; model: string },
+  selection?: EnglishModelSelection,
   nativeLang?: string,
   targetLang?: string,
 ): Promise<string | undefined> {
-  const llm = ctx.get('llm') as {
-    stream(options: GenerateOptions): AsyncIterable<StreamChunk>
-  } | undefined
+  const llm = ctx.get('llm')
   if (llm === undefined) return undefined
 
   // If the caller did not pin a provider/model, fall back to the user's
   // currently-selected default model (if any).
-  let provider = selection?.provider
-  let model = selection?.model
-  if (provider === undefined || model === undefined) {
-    const defaultModel = ctx.get('agentDefaultModel') as { currentSelection(): { provider?: string; model?: string } } | undefined
-    if (defaultModel !== undefined) {
-      const current = defaultModel.currentSelection()
-      provider = provider ?? current.provider
-      model = model ?? current.model
-    }
-  }
+  const current = ctx.get('agentDefaultModel')?.currentSelection()
+  const provider = selection?.provider ?? current?.provider
+  const model = selection?.model ?? current?.model
   if (provider === undefined || model === undefined) return undefined
+  const reasoningEffort: ReasoningEffortId | undefined = current?.provider === provider && current.model === model
+    ? current.reasoningEffort
+    : undefined
 
   // DSH's Message model needs ContentBlock[] content (plus id/role/source), so
   // we build a proper user message instead of passing a raw string.
@@ -79,6 +99,7 @@ export async function generateEnglishText(
     for await (const chunk of llm.stream({
       provider,
       model,
+      ...reasoningEffort === undefined ? {} : { reasoningEffort },
       system: SYSTEM_PROMPT,
       messages: [userMessage],
       temperature: 0.6,
@@ -87,7 +108,7 @@ export async function generateEnglishText(
       else if (chunk.type === 'finish') {
         const reason = chunk.reason
         if (reason.kind === 'error' || reason.kind === 'aborted') {
-          throw new Error(describeFailure(reason as { kind: string; failure?: { message?: string; code?: string } }))
+          throw new Error(describeFailure(reason))
         }
       }
     }
@@ -136,10 +157,7 @@ export function extractJson(text: string): unknown {
  * service is unavailable or listing fails.
  */
 export async function listEnglishModels(ctx: Context): Promise<Array<{ provider: string; providerName: string; models: Array<{ id: string; name: string }> }>> {
-  const llm = ctx.get('llm') as {
-    listProviders(): Array<{ id: string; name: string }>
-    listModels(provider: string): Promise<Array<{ id: string; name: string }>>
-  } | undefined
+  const llm = ctx.get('llm')
   if (llm === undefined) return []
   try {
     const providers = llm.listProviders()

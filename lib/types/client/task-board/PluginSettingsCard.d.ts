@@ -62,23 +62,12 @@ export interface FieldProps {
     hint: string;
     text: string;
     overridden: boolean;
-    invalid: boolean;
     overriddenLabel: string;
     resetLabel: string;
-    invalidLabel: string;
     disabled: boolean;
     onEdit: (text: string) => void;
     onReset: () => void;
 }
-/**
-* 文本输入型字段控件。
-*
-* 额外支持 numeric（数字键盘提示）与 placeholder；非法时切换错误样式。
-*/
-export declare function ValueField(props: FieldProps & {
-    numeric?: boolean;
-    placeholder?: string;
-}): import("react").JSX.Element;
 /**
 * 布尔字段控件：三态下拉（空 = 继承，true = 开，false = 关）。
 *
@@ -88,14 +77,4 @@ export declare function BooleanField(props: FieldProps & {
     inheritLabel: string;
     onLabel: string;
     offLabel: string;
-}): import("react").JSX.Element;
-/**
-* 选项字段控件：下拉选择，空值 = 继承，其余从 choices 里选。
-*/
-export declare function ChoiceField(props: FieldProps & {
-    inheritLabel: string;
-    choices: ReadonlyArray<{
-        value: string;
-        label: string;
-    }>;
 }): import("react").JSX.Element;

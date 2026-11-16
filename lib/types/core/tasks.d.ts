@@ -13,6 +13,8 @@ export interface ExecutionRecord {
     id: string;
     /** 执行驱动起来的 agent 会话 ID（启动后才有） */
     sessionId: string | undefined;
+    /** 执行提交的 Host 请求 ID。null 表示尚未提交，旧记录没有此字段。 */
+    requestId?: string | null;
     /** 执行开始时间戳（毫秒） */
     startedAt: number;
     /** 执行结束时间戳（毫秒），未结束时为 undefined */

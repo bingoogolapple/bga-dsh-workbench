@@ -20,6 +20,7 @@ export interface BannerConfig {
 export const DEFAULT_TEXT = '的专属 Harness 工作台'
 // 头像图片的读取地址（GET 获取图片；上传走 POST）。
 export const AVATAR_URL = '/bga-dsh-workbench/avatar'
+export const CONFIG_CHANGED_EVENT = 'bga-dsh-workbench:config-changed'
 
 // 配置读取地址（设置页与横幅组件共用）
 const CONFIG_URL = '/bga-dsh-workbench/config'
@@ -53,10 +54,10 @@ export function useBannerConfig(defaultText: string): BannerConfig {
     fetchConfig()
     // 监听全局“配置已变更”事件（设置页保存后广播），触发重新拉取
     const refresh = (): void => { fetchConfig() }
-    window.addEventListener('bga-dsh-workbench:config-changed', refresh)
+    window.addEventListener(CONFIG_CHANGED_EVENT, refresh)
     return () => {
       // 清理：移除事件监听，并递增令牌让仍在途的请求结果作废
-      window.removeEventListener('bga-dsh-workbench:config-changed', refresh)
+      window.removeEventListener(CONFIG_CHANGED_EVENT, refresh)
       fetchToken.current += 1
     }
   }, [defaultText])

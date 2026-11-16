@@ -57,7 +57,7 @@ export function ConfirmDialog({ title, message, confirmLabel, danger, onCancel, 
   }, [onCancel])
   return (
     // 遮罩：只有点击遮罩本身（而非对话框内部）时才取消。
-    <div className={css["bga-kb-modal-bg"]} onMouseDown={event => { if (event.target === event.currentTarget) onCancel() }}>
+    <div className={css["bga-kb-modal-bg"]} data-window-drag-exclude="" onMouseDown={event => { if (event.target === event.currentTarget) onCancel() }}>
       <div ref={dialogRef} className={css["bga-kb-modal-sm"]} role="alertdialog" aria-label={title}>
         <h2 className={css["bga-kb-modal-title"]}>{title}</h2>
         <p className={css["bga-kb-modal-msg"]}>{message}</p>

@@ -33,14 +33,16 @@
    }
 
    /** 整体写回：POST 序列化后的任务 JSON（宿主校验并落盘） */
-   save(tasks: readonly TaskRecord[]): void {
+   save(tasks: readonly TaskRecord[]): boolean {
      try {
        const xhr = new XMLHttpRequest()
        xhr.open('POST', TASKS_URL, false) // 同步模式
        xhr.setRequestHeader('Content-Type', 'application/json')
        xhr.send(JSON.stringify(tasks))
+       return xhr.status >= 200 && xhr.status < 300
      } catch (error) {
        console.error('[bga-dsh-workbench] task ledger write failed', error)
+       return false
      }
    }
 

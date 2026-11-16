@@ -1,27 +1,19 @@
-import type { Context as ClientContext } from '@deepseek-ai/cordis';
-import type { SettingsScope, SettingsScopeSpec } from '@deepseek-ai/dsh-client-ui-settings/client';
+import type { Context } from '@deepseek-ai/cordis';
+import { BoardController } from '../core/controller.ts';
+import type { TaskBoardDraft } from './task-board/board/TaskBoard.tsx';
 import { type TaskBoardKey } from './task-board/locales.ts';
 declare module '@deepseek-ai/dsh-client-ui-slots' {
     interface LocaleNamespaceMap {
         'bga-dsh-workbench-task-board': TaskBoardKey;
     }
-    interface SlotMap {
-        'web-ui.plugin.item': {
-            kind: 'list';
-            scope: 'root';
-            owner: SettingsPluginItemOwnerProps;
-        };
-    }
 }
-interface SettingsPluginItemOwnerProps {
-    children?: never;
+interface BoardView {
+    controller: BoardController;
+    draft: TaskBoardDraft;
 }
-declare module '@deepseek-ai/cordis' {
-    interface Context {
-        webUiSettings?: {
-            bind<S>(spec: SettingsScopeSpec<S>): SettingsScope<S>;
-        };
-    }
+export interface BoardSource {
+    getSnapshot: () => BoardView | undefined;
+    subscribe: (listener: () => void) => () => void;
 }
-export declare function applyTaskBoard(ctx: ClientContext): void;
+export declare function applyTaskBoard(ctx: Context): BoardSource;
 export {};

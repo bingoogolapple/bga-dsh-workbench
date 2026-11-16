@@ -508,7 +508,7 @@ function StatsPanel({ tasks, days, categories, categoryLabel, onClose }: {
   const maxTotal = Math.max(1, ...rows.map(row => row.total))
 
   return createPortal(
-    <div className={css['bga-kb-modal-bg']} onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
+    <div className={css['bga-kb-modal-bg']} data-window-drag-exclude="" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
       <div ref={dialogRef} className={mcss['bga-mx-stats']} role="dialog" aria-label={t('matrix.stats.title')}>
         <h2 className={css['bga-kb-modal-title']}>{t('matrix.stats.title')}</h2>
         {total === 0 && <p className={mcss['bga-mx-stats-empty']}>{t('matrix.stats.noData')}</p>}
@@ -580,7 +580,7 @@ function CategoryManager({ initial, onChange, onCancel, onSave }: {
   }
 
   return createPortal(
-    <div className={css['bga-kb-modal-bg']} onMouseDown={event => { if (event.target === event.currentTarget) onCancel() }}>
+    <div className={css['bga-kb-modal-bg']} data-window-drag-exclude="" onMouseDown={event => { if (event.target === event.currentTarget) onCancel() }}>
       <div ref={dialogRef} className={css['bga-kb-modal']} role="dialog" aria-label={t('matrix.categoryManage')}>
         <h2 className={css['bga-kb-modal-title']}>{t('matrix.categoryManage')}</h2>
         <div className={mcss['bga-mx-cat-list']}>
@@ -641,7 +641,7 @@ function ReminderSettings({ controller, onClose }: { controller: BoardController
   }, [onClose])
 
   return createPortal(
-    <div className={css['bga-kb-modal-bg']} onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
+    <div className={css['bga-kb-modal-bg']} data-window-drag-exclude="" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
       <div ref={dialogRef} className={css['bga-kb-modal']} role="dialog" aria-label={t('matrix.reminder.setting')}>
         <h2 className={css['bga-kb-modal-title']}>{t('matrix.reminder.setting')}</h2>
         <label className={css['bga-kb-fld']}>

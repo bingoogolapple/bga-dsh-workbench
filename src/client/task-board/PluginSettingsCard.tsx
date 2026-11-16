@@ -91,7 +91,7 @@
    const title = props.t(props.titleKey)
    const description = props.t(props.descriptionKey)
    // 保存按钮的禁用条件：无脏编辑、存在非法字段、保存中，任一成立即禁用。
-   const blocked = !state.dirty || state.invalid || state.saving
+   const blocked = !state.dirty || state.saving
    // 展开时追加 -open 类，驱动 CSS 里的展开样式。
    const cardClass = open ? `${css["bga-kb-cfg--open"]} ${css["bga-kb-cfg"]}` : css["bga-kb-cfg"]
 
@@ -190,7 +190,7 @@
                <button
                  type="button"
                  className={css["bga-kb-cfg-save"]}
-                 disabled={blocked}
+                 disabled={blocked || !state.writable}
                  onClick={props.onSave}
                >
                  {props.t(!state.saving ? 'settings.save' : 'settings.saving')}
@@ -223,17 +223,11 @@
    // 是否被用户覆盖（显示「已覆盖」徽标与重置按钮）。
    overridden: boolean
 
-   // 是否输入非法（切换为错误样式并显示 invalidLabel）。
-   invalid: boolean
-
    // 「已覆盖」徽标的文案。
    overriddenLabel: string
 
    // 「重置」按钮的文案。
    resetLabel: string
-
-   // 输入非法的提示文案。
-   invalidLabel: string
 
    // 是否禁用（部署只读时全部控件禁用）。
    disabled: boolean
@@ -243,57 +237,6 @@
 
    // 重置回调（恢复默认值）。
    onReset: () => void
- }
-
- /**
- * 文本输入型字段控件。
- *
- * 额外支持 numeric（数字键盘提示）与 placeholder；非法时切换错误样式。
- */
- export function ValueField(props: FieldProps & {
-
-   // 是否为数字输入（设置 inputMode='numeric'）。
-   numeric?: boolean
-
-   // 输入框占位文案。
-   placeholder?: string
- }) {
-   return (
-     <div className={css["bga-kb-cfg-field"]}>
-       <div className={css["bga-kb-cfg-head"]}>
-         <label className={css["bga-kb-cfg-label"]} htmlFor={props.id}>{props.label}</label>
-         {props.overridden
-           ? (
-             <span className={css["bga-kb-cfg-badges"]}>
-               <span className={css["bga-kb-cfg-badge"]}>{props.overriddenLabel}</span>
-               <button
-                 type="button"
-                 className={css["bga-kb-cfg-reset"]}
-                 disabled={props.disabled}
-                 onClick={props.onReset}
-               >
-                 {props.resetLabel}
-               </button>
-             </span>
-           )
-           : null}
-       </div>
-       <input
-         id={props.id}
-         className={props.invalid ? css["bga-kb-cfg-input--err"] : css["bga-kb-cfg-input"]}
-         type="text"
-         {...props.numeric === true ? { inputMode: 'numeric' as const } : {}}
-         {...props.invalid ? { 'aria-invalid': true } : {}}
-         value={props.text}
-         placeholder={props.placeholder ?? ''}
-         disabled={props.disabled}
-         onChange={(event) => { props.onEdit(event.target.value) }}
-       />
-       <p className={props.invalid ? css["bga-kb-cfg-invalid"] : css["bga-kb-cfg-hint"]}>
-         {props.invalid ? props.invalidLabel : props.hint}
-       </p>
-     </div>
-   )
  }
 
  /**
@@ -344,56 +287,6 @@
          <option value="false">{props.offLabel}</option>
        </select>
        <p className={css["bga-kb-cfg-hint"]}>{props.hint}</p>
-     </div>
-   )
- }
-
- /**
- * 选项字段控件：下拉选择，空值 = 继承，其余从 choices 里选。
- */
- export function ChoiceField(props: FieldProps & {
-
-   // 「继承」选项的文案。
-   inheritLabel: string
-
-   // 可选列表（value 是存储值，label 是展示文案）。
-   choices: ReadonlyArray<{ value: string; label: string }>
- }) {
-   return (
-     <div className={css["bga-kb-cfg-field"]}>
-       <div className={css["bga-kb-cfg-head"]}>
-         <label className={css["bga-kb-cfg-label"]} htmlFor={props.id}>{props.label}</label>
-         {props.overridden
-           ? (
-             <span className={css["bga-kb-cfg-badges"]}>
-               <span className={css["bga-kb-cfg-badge"]}>{props.overriddenLabel}</span>
-               <button
-                 type="button"
-                 className={css["bga-kb-cfg-reset"]}
-                 disabled={props.disabled}
-                 onClick={props.onReset}
-               >
-                 {props.resetLabel}
-               </button>
-             </span>
-           )
-           : null}
-       </div>
-       <select
-         id={props.id}
-         className={css["bga-kb-cfg-select"]}
-         value={props.text}
-         disabled={props.disabled}
-         onChange={(event) => { props.onEdit(event.target.value) }}
-       >
-         <option value="">{props.inheritLabel}</option>
-         {props.choices.map(choice => (
-           <option key={choice.value} value={choice.value}>{choice.label}</option>
-         ))}
-       </select>
-       <p className={props.invalid ? css["bga-kb-cfg-invalid"] : css["bga-kb-cfg-hint"]}>
-         {props.invalid ? props.invalidLabel : props.hint}
-       </p>
      </div>
    )
  }

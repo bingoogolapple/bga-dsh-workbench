@@ -267,7 +267,7 @@ export function EnglishLearningLayer(): JSX.Element | null {
   // Notices shown when no question is available (done / locked), auto-dismiss.
   if (notice !== null) {
     return (
-      <div style={overlayStyle} onClick={() => setNotice(null)}>
+      <div data-window-drag-exclude="" style={overlayStyle} onClick={() => setNotice(null)}>
         <div style={{ ...cardStyle, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
           <div style={{ fontSize: 16, lineHeight: 1.6 }}>{notice.text}</div>
           <div style={{ fontSize: 12, marginTop: 12, opacity: 0.7 }}>点击任意处关闭</div>
@@ -279,7 +279,7 @@ export function EnglishLearningLayer(): JSX.Element | null {
   // Session complete summary.
   if (sessionDone) {
     return (
-      <div style={overlayStyle} onClick={() => endSession()}>
+      <div data-window-drag-exclude="" style={overlayStyle} onClick={() => endSession()}>
         <div style={{ ...cardStyle, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
           <div style={{ fontSize: 22, marginBottom: 12 }}>🎉 本轮完成！</div>
           <div style={{ fontSize: 15, lineHeight: 2 }}>
@@ -297,7 +297,7 @@ export function EnglishLearningLayer(): JSX.Element | null {
   const hearts = state?.day.hearts ?? 5
 
   return (
-    <div style={overlayStyle} onClick={phase === 'correct' || phase === 'wrong' ? dismissFeedback : undefined}>
+    <div data-window-drag-exclude="" style={overlayStyle} onClick={phase === 'correct' || phase === 'wrong' ? dismissFeedback : undefined}>
       <div style={cardStyle} onClick={e => e.stopPropagation()}>
         {/* Header: gamification bar */}
         <div style={rowStyle}>

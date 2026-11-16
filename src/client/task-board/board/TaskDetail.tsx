@@ -470,19 +470,17 @@ const SUPPORT_LABEL_KEY: Record<SupportStatus, TaskBoardKey> = {
    // 用 createPortal 把详情渲染到 document.body，避免被看板定位上下文裁剪/遮蔽。
    return createPortal(
      // 遮罩：点击遮罩本身（而非详情面板）即关闭。
-     <div className={css["bga-kb-modal-bg"]} onMouseDown={event => { if (event.target === event.currentTarget) { blurActive(); controller.closeTask() } }}>
+     <div className={css["bga-kb-modal-bg"]} data-window-drag-exclude="" onMouseDown={event => { if (event.target === event.currentTarget) { blurActive(); controller.closeTask() } }}>
        <div ref={dialogRef} className={css["bga-kb-det"]} role="dialog" aria-label={t('detail.title')}>
-         {/* 右上角关闭按钮 */}
-         <button
-           type="button"
-           className={css["bga-kb-det-close"]}
-           aria-label={t('detail.close')}
-           onClick={() => { blurActive(); controller.closeTask() }}
-         >
-           ×
-         </button>
-         {/* 标题 + 状态徽标 */}
          <header className={css["bga-kb-det-header"]}>
+           <button
+             type="button"
+             className={css["bga-kb-det-close"]}
+             aria-label={t('detail.close')}
+             onClick={() => { blurActive(); controller.closeTask() }}
+           >
+             ×
+           </button>
            <TitleField controller={controller} task={current} />
            <span className={css["bga-kb-badge"]} data-status={current.status}>{t(STATUS_KEY[current.status])}</span>
          </header>

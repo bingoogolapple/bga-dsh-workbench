@@ -11,6 +11,8 @@ export interface ResolvedBannerConfig {
 }
 /** 彩带（完成回合庆祝特效）配置 */
 export interface ConfettiConfig {
+    /** 是否播放庆祝特效 */
+    readonly show: boolean;
     /** 是否播放庆祝音效 */
     readonly sound: boolean;
     /** 彩带配色主题 */
@@ -37,6 +39,9 @@ export interface OpenConfig {
 export interface WorkbenchConfig {
     readonly banner: ResolvedBannerConfig;
     readonly confetti: ConfettiConfig;
+    readonly english: {
+        readonly enabled: boolean;
+    };
     readonly open: OpenConfig;
     /** 附加 IDE 打开方式的展示开关（true = 展示在工作区菜单尾部） */
     readonly openExtra: ExtraOpenConfig;
@@ -70,6 +75,9 @@ export interface BannerSettingsPatch {
 export interface ConfettiSettingsPatch {
     readonly show?: boolean;
     readonly sound?: boolean;
+    readonly theme?: ConfettiTheme;
+    readonly intensity?: ConfettiIntensity;
+    readonly trigger?: ConfettiTrigger;
 }
 /** 英语学习设置的部分更新 */
 export interface EnglishSettingsPatch {

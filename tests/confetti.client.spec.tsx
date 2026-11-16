@@ -15,6 +15,7 @@
  import { cleanup, render } from '@testing-library/react'
  import { afterEach, describe, expect, it, vi } from 'vitest'
  import { ConfettiLayer, fetchConfettiSound } from '../src/client/ConfettiLayer.tsx'
+ import { CONFIG_CHANGED_EVENT } from '../src/client/banner-config.ts'
  import { runConfettiBurst, type BurstRect } from '../src/client/confetti.ts'
 
  // 假定的消息列表可视区域矩形，彩带触发时应把该矩形上报给 fire 回调
@@ -335,6 +336,27 @@
      const loadSoundEnabled = vi.fn(async () => true)
      render(<ConfettiLayer fire={vi.fn(() => () => {})} loadSoundEnabled={loadSoundEnabled} />)
      await vi.waitFor(() => expect(loadSoundEnabled).toHaveBeenCalledTimes(1))
+   })
+
+   it('uses the saved sound preference for the next turn without a reload', async () => {
+     let enabled = true
+     const loadSoundEnabled = vi.fn(async () => enabled)
+     const fire = vi.fn(() => () => {})
+     const playSound = vi.fn()
+     const { flow } = mountChat()
+     render(<ConfettiLayer fire={fire} playSound={playSound} loadSoundEnabled={loadSoundEnabled} />)
+
+     await startTurn(flow, 1)
+     flow.append(seat('turn-tail', 't1'))
+     await vi.waitFor(() => expect(playSound).toHaveBeenCalledTimes(1))
+
+     enabled = false
+     window.dispatchEvent(new Event(CONFIG_CHANGED_EVENT))
+     await startTurn(flow, 2)
+     flow.append(seat('turn-tail', 't2'))
+     await vi.waitFor(() => expect(fire).toHaveBeenCalledTimes(2))
+     expect(loadSoundEnabled).toHaveBeenCalledTimes(2)
+     expect(playSound).toHaveBeenCalledTimes(1)
    })
 
    // 配置读取失败时回退到乐观默认值：音效开启

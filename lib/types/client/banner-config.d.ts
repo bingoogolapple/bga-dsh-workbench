@@ -6,4 +6,5 @@ export interface BannerConfig {
 }
 export declare const DEFAULT_TEXT = "\u7684\u4E13\u5C5E Harness \u5DE5\u4F5C\u53F0";
 export declare const AVATAR_URL = "/bga-dsh-workbench/avatar";
+export declare const CONFIG_CHANGED_EVENT = "bga-dsh-workbench:config-changed";
 export declare function useBannerConfig(defaultText: string): BannerConfig;

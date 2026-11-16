@@ -135,6 +135,7 @@ import {
    private readonly now: () => number
    /** ID 生成函数（可注入以便测试） */
    private readonly uuid: () => string
+   private disposed = false
 
    /** 构造控制器：注入依赖，配置默认时钟/ID 生成器 */
    constructor(private readonly deps: ControllerDeps) {
@@ -150,6 +151,7 @@ import {
     * 4. 通知一次初始快照。
     */
    start(): void {
+     this.disposed = false
      this.tasks = this.deps.store.load()
      this.meta = this.deps.metaStore?.load(this.now()) ?? emptyWorkbenchMeta(this.now())
      void this.reconcileRunningTasks()
@@ -167,6 +169,7 @@ import {
 
    /** 释放控制器：清理订阅、定时器与监听者 */
    dispose(): void {
+     this.disposed = true
      for (const dispose of this.disposers.splice(0)) dispose()
      this.listeners.clear()
      if (this.reconcileTimer !== undefined) clearTimeout(this.reconcileTimer)
@@ -373,6 +376,7 @@ import {
     * 3. 交给 ExecutionService.run 驱动真实 agent 会话。
     */
    async runTask(id: string): Promise<boolean> {
+     if (this.disposed) return false
      const task = this.tasks.find(candidate => candidate.id === id)
      if (task === undefined || task.status === 'running') return false
      const { task: next, execution } = startExecution(task, this.now(), this.uuid())
@@ -395,14 +399,19 @@ import {
      await this.runTask(id)
    }
 
-   /** 处理执行事件：started 挂上会话 ID；settled 落定结果与状态 */
+   /** 处理执行事件：started 记录会话与提交标识，settled 落定结果与状态。 */
    private handleExecutionEvent(event: ExecutionEvent): void {
+     if (this.disposed) return
      if (event.kind === 'started') {
-       // 执行已启动：把 sessionId 记回对应执行记录
+       // 请求尚未发送，运行中断后凭此标识查真实结局。
+       if (event.requestId !== undefined && !this.tasks.some(task => task.id === event.taskId
+         && task.executions.some(execution => execution.id === event.executionId && execution.endedAt === undefined))) {
+         throw new Error('task execution is no longer in the ledger')
+       }
        this.tasks = this.tasks.map(task => task.id === event.taskId
-         ? attachSessionId(task, event.executionId, event.sessionId, this.now())
+         ? attachSessionId(task, event.executionId, event.sessionId, this.now(), event.requestId)
          : task)
-       this.persistAndNotify()
+       this.persistAndNotify(event.requestId !== undefined)
        return
      }
      // 结算：移除在途标记，按 outcome 落定状态
@@ -455,11 +464,11 @@ import {
 
   /**
    * 调和运行中任务：对每个「不在途」的运行中任务，向执行服务询问真实结局
-   * （会话消失 → 视为取消；会话空闲 → 按 lastAgentError 判定成败），
+    * 由会话的持久事件识别任务的结局，
    * 并一次性落盘与通知。
    */
    private async reconcileRunningTasks(): Promise<void> {
-     if (this.reconcileInFlight) return
+     if (this.disposed || this.reconcileInFlight) return
      this.reconcileInFlight = true
      try {
        type Settled = Extract<ExecutionEvent, { kind: 'settled' }>
@@ -470,6 +479,7 @@ import {
          // 在途执行由事件回调负责，调和跳过
          if (execution !== undefined && this.activeExecutionIds.has(execution.id)) continue
          const event = await this.deps.exec.reconcile(task)
+         if (this.disposed) return
          if (event !== undefined && event.kind === 'settled') events.push({ taskId: task.id, event })
        }
        if (events.length === 0) return
@@ -490,8 +500,9 @@ import {
    }
 
    /** 落盘并通知订阅者（每次状态变更的标准出口） */
-   private persistAndNotify(): void {
-     this.deps.store.save(this.tasks)
+   private persistAndNotify(requireTaskWrite = false): void {
+     const saved = this.deps.store.save(this.tasks)
+     if (requireTaskWrite && saved === false) throw new Error('could not persist execution request before submitting')
      this.deps.metaStore?.save(this.meta)
      this.notify()
    }
@@ -502,17 +513,20 @@ import {
    }
  }
 
- /** 把会话 ID 挂到指定执行记录上（执行启动事件回调使用） */
+ /** 记录执行会话及其提交标识。 */
  function attachSessionId(
    task: TaskRecord,
    executionId: string,
    sessionId: string,
    now: number,
+   requestId?: string,
  ): TaskRecord {
    return {
      ...task,
      updatedAt: now,
      executions: task.executions.map(execution =>
-       execution.id === executionId ? { ...execution, sessionId } : execution),
+       execution.id === executionId
+         ? { ...execution, sessionId, ...requestId === undefined ? {} : { requestId } }
+         : execution),
    }
  }

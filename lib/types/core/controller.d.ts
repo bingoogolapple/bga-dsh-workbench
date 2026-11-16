@@ -96,6 +96,7 @@ export declare class BoardController {
     private readonly now;
     /** ID 生成函数（可注入以便测试） */
     private readonly uuid;
+    private disposed;
     /** 构造控制器：注入依赖，配置默认时钟/ID 生成器 */
     constructor(deps: ControllerDeps);
     /**
@@ -182,7 +183,7 @@ export declare class BoardController {
     runTask(id: string): Promise<boolean>;
     /** 重新执行任务：先移回 todo（若未在运行），再启动执行 */
     rerunTask(id: string): Promise<void>;
-    /** 处理执行事件：started 挂上会话 ID；settled 落定结果与状态 */
+    /** 处理执行事件：started 记录会话与提交标识，settled 落定结果与状态。 */
     private handleExecutionEvent;
     /**
      * 会话变化回调：
@@ -202,7 +203,7 @@ export declare class BoardController {
     private scheduleReconcile;
     /**
      * 调和运行中任务：对每个「不在途」的运行中任务，向执行服务询问真实结局
-     * （会话消失 → 视为取消；会话空闲 → 按 lastAgentError 判定成败），
+      * 由会话的持久事件识别任务的结局，
      * 并一次性落盘与通知。
      */
     private reconcileRunningTasks;

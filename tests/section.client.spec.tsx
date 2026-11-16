@@ -97,6 +97,16 @@
      expect(toggle.checked).toBe(true) // 默认音效开启
    })
 
+   it('hydrates the persisted confetti enable switch', async () => {
+     const defaults = await face().load()
+     const injected = face({ load: vi.fn(async () => ({ ...defaults, confettiShow: false })) })
+     render(<SettingsSection {...(injected as unknown as Record<string, unknown>)} /> as never)
+     const toggle = screen.getByRole<HTMLInputElement>('checkbox', { name: /启用彩带特效/ })
+     await waitFor(() => expect(toggle.checked).toBe(false))
+     fireEvent.click(toggle)
+     await waitFor(() => expect(injected.saveConfetti).toHaveBeenCalledWith({ show: true }))
+   })
+
    // 点击音效开关：应通过 saveConfetti 持久化关闭音效并显示提示
    it('persists a sound toggle through saveConfetti', async () => {
      const injected = face()

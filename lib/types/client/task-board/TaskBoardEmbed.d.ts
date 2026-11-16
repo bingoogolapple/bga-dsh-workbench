@@ -1,9 +1,6 @@
 import type { BoardController } from '../../core/controller.ts';
-/**
- * 看板内嵌视图组件（用于 hero 空态）。
- *
- * @param props.controller 看板控制器，透传给内部 <TaskBoard />。
- */
-export declare function TaskBoardEmbed({ controller }: {
+import { type TaskBoardDraft } from './board/TaskBoard.tsx';
+export declare function TaskBoardEmbed({ controller, draft }: {
     controller: BoardController;
+    draft?: TaskBoardDraft;
 }): import("react").JSX.Element;

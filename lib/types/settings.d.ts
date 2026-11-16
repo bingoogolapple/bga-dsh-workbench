@@ -1,84 +1,252 @@
-/**
- * 工作台设置注册（宿主端）。
- *
- * 向 DSH 的 settings 服务注册本插件的设置命名空间（bga-dsh-workbench），
- * 定义横幅 / 彩带 / 打开方式配置的 schema，并支持「实时生效」的 live 模式。
- */
-import type { Context } from '@deepseek-ai/cordis';
-import { type SettingsScope } from '@deepseek-ai/dsh-settings';
-/** 本插件的设置命名空间 ID */
-export declare const WORKBENCH_NAMESPACE: import("@deepseek-ai/dsh-settings").SettingsNamespace;
-/** 横幅的持久化设置 */
-export interface BannerSettings {
-    /** 头像图片路径（空串为默认头像） */
-    avatarPath?: string;
-    /** 横幅问候语文本 */
-    text?: string;
-    /** 是否显示横幅 */
-    show?: boolean;
-}
-/** 彩带的持久化设置 */
-export interface ConfettiSettings {
-    /** 彩带总开关：关闭后不播放特效与音效 */
-    show?: boolean;
-    /** 是否播放庆祝音效 */
-    sound?: boolean;
-    /** 彩带配色主题 */
-    theme?: ConfettiTheme;
-    /** 彩带强度 */
-    intensity?: ConfettiIntensity;
-    /** 触发时机 */
-    trigger?: ConfettiTrigger;
-}
-/** 彩带配色主题 */
-export type ConfettiTheme = 'default' | 'gold' | 'ocean' | 'sakura' | 'neon';
-/** 彩带强度 */
-export type ConfettiIntensity = 'small' | 'medium' | 'large' | 'epic';
-/** 彩带触发时机 */
-export type ConfettiTrigger = 'success' | 'every' | 'task';
-/** 英语学习的持久化设置 */
-export interface EnglishSettings {
-    /** 英语学习总开关：关闭后不弹出答题卡 */
-    enabled?: boolean;
-}
-/** 「打开方式」的持久化偏好（终端 / 编辑器，取值见 open-app.ts 偏好 ID 白名单）。 */
-export interface OpenPrefsSettings {
-    /** 终端偏好 ID（如 terminal-iterm）；缺省/空 = 平台默认终端 */
-    terminal?: string;
-    /** 编辑器偏好 ID（如 editor-cursor）；缺省/空 = VS Code */
-    editor?: string;
-}
-/** 附加 IDE 打开方式的展示开关（true = 在工作区菜单尾部展示）。 */
-export interface ExtraOpenSettings {
-    /** 是否展示「在 Android Studio 中打开」 */
-    androidStudio?: boolean;
-    /** 是否展示「在 Xcode 中打开」 */
-    xcode?: boolean;
-    /** 是否展示「在微信开发者工具中打开」 */
-    wechatDevtools?: boolean;
-    /** 是否展示「在 IntelliJ IDEA 中打开」 */
-    intellijIdea?: boolean;
-    /** 是否展示「在 DevEco Studio 中打开」 */
-    devecoStudio?: boolean;
-    /** 是否展示「在 WebStorm 中打开」 */
-    webstorm?: boolean;
-    /** 是否展示「在 PyCharm 中打开」 */
-    pycharm?: boolean;
-    /** 是否展示「在 GoLand 中打开」 */
-    goland?: boolean;
-}
-/** 工作台整体持久化设置 */
-export interface WorkbenchSettings {
-    banner?: BannerSettings;
-    confetti?: ConfettiSettings;
-    english?: EnglishSettings;
-    open?: OpenPrefsSettings;
-    openExtra?: ExtraOpenSettings;
-}
-/**
- * 注册工作台设置命名空间。
- * @param ctx   Cordis 上下文（需已注入 settings 服务）
- * @param base  基础设置（配置默认值，作为回退）
- * @returns     设置作用域句柄（get/update 等）
- */
-export declare function registerWorkbenchSettings(ctx: Context, base: WorkbenchSettings): SettingsScope<WorkbenchSettings>;
+import z from '@deepseek-ai/schemastery';
+import type { WorkbenchConfig } from './routes.ts';
+export declare const WORKBENCH_ENTRY_ID = "bga-dsh-workbench";
+export declare const DEFAULT_TEXT = "\u7684\u4E13\u5C5E Harness \u5DE5\u4F5C\u53F0";
+export declare function defaultStorageDir(): string;
+export declare const Config: z<Schemastery.ObjectS<NoInfer<{
+    avatarPath: z<string, string, "defined">;
+    text: z<string, string, "defined">;
+    show: z<boolean, boolean, "defined">;
+    sound: z<boolean, boolean, "defined">;
+    storageDir: z<string, string, "defined">;
+    preferences: z<NoInfer<Schemastery.ObjectS<NoInfer<{
+        banner: z<Schemastery.ObjectS<NoInfer<{
+            avatarPath: z<string, string, "plain">;
+            text: z<string, string, "plain">;
+            show: z<boolean, boolean, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            avatarPath: z<string, string, "plain">;
+            text: z<string, string, "plain">;
+            show: z<boolean, boolean, "plain">;
+        }>>, "plain">;
+        confetti: z<Schemastery.ObjectS<NoInfer<{
+            show: z<boolean, boolean, "plain">;
+            sound: z<boolean, boolean, "plain">;
+            theme: z<"gold" | "default" | "ocean" | "sakura" | "neon", "gold" | "default" | "ocean" | "sakura" | "neon", "plain">;
+            intensity: z<"small" | "medium" | "large" | "epic", "small" | "medium" | "large" | "epic", "plain">;
+            trigger: z<"every" | "success" | "task", "every" | "success" | "task", "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            show: z<boolean, boolean, "plain">;
+            sound: z<boolean, boolean, "plain">;
+            theme: z<"gold" | "default" | "ocean" | "sakura" | "neon", "gold" | "default" | "ocean" | "sakura" | "neon", "plain">;
+            intensity: z<"small" | "medium" | "large" | "epic", "small" | "medium" | "large" | "epic", "plain">;
+            trigger: z<"every" | "success" | "task", "every" | "success" | "task", "plain">;
+        }>>, "plain">;
+        english: z<Schemastery.ObjectS<NoInfer<{
+            enabled: z<boolean, boolean, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            enabled: z<boolean, boolean, "plain">;
+        }>>, "plain">;
+        open: z<Schemastery.ObjectS<NoInfer<{
+            terminal: z<string, string, "plain">;
+            editor: z<string, string, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            terminal: z<string, string, "plain">;
+            editor: z<string, string, "plain">;
+        }>>, "plain">;
+        openExtra: z<Schemastery.ObjectS<NoInfer<{
+            androidStudio: z<boolean, boolean, "plain">;
+            xcode: z<boolean, boolean, "plain">;
+            wechatDevtools: z<boolean, boolean, "plain">;
+            intellijIdea: z<boolean, boolean, "plain">;
+            devecoStudio: z<boolean, boolean, "plain">;
+            webstorm: z<boolean, boolean, "plain">;
+            pycharm: z<boolean, boolean, "plain">;
+            goland: z<boolean, boolean, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            androidStudio: z<boolean, boolean, "plain">;
+            xcode: z<boolean, boolean, "plain">;
+            wechatDevtools: z<boolean, boolean, "plain">;
+            intellijIdea: z<boolean, boolean, "plain">;
+            devecoStudio: z<boolean, boolean, "plain">;
+            webstorm: z<boolean, boolean, "plain">;
+            pycharm: z<boolean, boolean, "plain">;
+            goland: z<boolean, boolean, "plain">;
+        }>>, "plain">;
+    }>>>, NoInfer<Schemastery.ObjectT<NoInfer<{
+        banner: z<Schemastery.ObjectS<NoInfer<{
+            avatarPath: z<string, string, "plain">;
+            text: z<string, string, "plain">;
+            show: z<boolean, boolean, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            avatarPath: z<string, string, "plain">;
+            text: z<string, string, "plain">;
+            show: z<boolean, boolean, "plain">;
+        }>>, "plain">;
+        confetti: z<Schemastery.ObjectS<NoInfer<{
+            show: z<boolean, boolean, "plain">;
+            sound: z<boolean, boolean, "plain">;
+            theme: z<"gold" | "default" | "ocean" | "sakura" | "neon", "gold" | "default" | "ocean" | "sakura" | "neon", "plain">;
+            intensity: z<"small" | "medium" | "large" | "epic", "small" | "medium" | "large" | "epic", "plain">;
+            trigger: z<"every" | "success" | "task", "every" | "success" | "task", "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            show: z<boolean, boolean, "plain">;
+            sound: z<boolean, boolean, "plain">;
+            theme: z<"gold" | "default" | "ocean" | "sakura" | "neon", "gold" | "default" | "ocean" | "sakura" | "neon", "plain">;
+            intensity: z<"small" | "medium" | "large" | "epic", "small" | "medium" | "large" | "epic", "plain">;
+            trigger: z<"every" | "success" | "task", "every" | "success" | "task", "plain">;
+        }>>, "plain">;
+        english: z<Schemastery.ObjectS<NoInfer<{
+            enabled: z<boolean, boolean, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            enabled: z<boolean, boolean, "plain">;
+        }>>, "plain">;
+        open: z<Schemastery.ObjectS<NoInfer<{
+            terminal: z<string, string, "plain">;
+            editor: z<string, string, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            terminal: z<string, string, "plain">;
+            editor: z<string, string, "plain">;
+        }>>, "plain">;
+        openExtra: z<Schemastery.ObjectS<NoInfer<{
+            androidStudio: z<boolean, boolean, "plain">;
+            xcode: z<boolean, boolean, "plain">;
+            wechatDevtools: z<boolean, boolean, "plain">;
+            intellijIdea: z<boolean, boolean, "plain">;
+            devecoStudio: z<boolean, boolean, "plain">;
+            webstorm: z<boolean, boolean, "plain">;
+            pycharm: z<boolean, boolean, "plain">;
+            goland: z<boolean, boolean, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            androidStudio: z<boolean, boolean, "plain">;
+            xcode: z<boolean, boolean, "plain">;
+            wechatDevtools: z<boolean, boolean, "plain">;
+            intellijIdea: z<boolean, boolean, "plain">;
+            devecoStudio: z<boolean, boolean, "plain">;
+            webstorm: z<boolean, boolean, "plain">;
+            pycharm: z<boolean, boolean, "plain">;
+            goland: z<boolean, boolean, "plain">;
+        }>>, "plain">;
+    }>>>, "volatile-defined">;
+    taskBoard: z<NoInfer<Schemastery.ObjectS<NoInfer<{
+        enabled: z<boolean, boolean, "plain">;
+        announceToAgent: z<boolean, boolean, "plain">;
+    }>>>, NoInfer<Schemastery.ObjectT<NoInfer<{
+        enabled: z<boolean, boolean, "plain">;
+        announceToAgent: z<boolean, boolean, "plain">;
+    }>>>, "volatile-defined">;
+}>>, Schemastery.ObjectT<NoInfer<{
+    avatarPath: z<string, string, "defined">;
+    text: z<string, string, "defined">;
+    show: z<boolean, boolean, "defined">;
+    sound: z<boolean, boolean, "defined">;
+    storageDir: z<string, string, "defined">;
+    preferences: z<NoInfer<Schemastery.ObjectS<NoInfer<{
+        banner: z<Schemastery.ObjectS<NoInfer<{
+            avatarPath: z<string, string, "plain">;
+            text: z<string, string, "plain">;
+            show: z<boolean, boolean, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            avatarPath: z<string, string, "plain">;
+            text: z<string, string, "plain">;
+            show: z<boolean, boolean, "plain">;
+        }>>, "plain">;
+        confetti: z<Schemastery.ObjectS<NoInfer<{
+            show: z<boolean, boolean, "plain">;
+            sound: z<boolean, boolean, "plain">;
+            theme: z<"gold" | "default" | "ocean" | "sakura" | "neon", "gold" | "default" | "ocean" | "sakura" | "neon", "plain">;
+            intensity: z<"small" | "medium" | "large" | "epic", "small" | "medium" | "large" | "epic", "plain">;
+            trigger: z<"every" | "success" | "task", "every" | "success" | "task", "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            show: z<boolean, boolean, "plain">;
+            sound: z<boolean, boolean, "plain">;
+            theme: z<"gold" | "default" | "ocean" | "sakura" | "neon", "gold" | "default" | "ocean" | "sakura" | "neon", "plain">;
+            intensity: z<"small" | "medium" | "large" | "epic", "small" | "medium" | "large" | "epic", "plain">;
+            trigger: z<"every" | "success" | "task", "every" | "success" | "task", "plain">;
+        }>>, "plain">;
+        english: z<Schemastery.ObjectS<NoInfer<{
+            enabled: z<boolean, boolean, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            enabled: z<boolean, boolean, "plain">;
+        }>>, "plain">;
+        open: z<Schemastery.ObjectS<NoInfer<{
+            terminal: z<string, string, "plain">;
+            editor: z<string, string, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            terminal: z<string, string, "plain">;
+            editor: z<string, string, "plain">;
+        }>>, "plain">;
+        openExtra: z<Schemastery.ObjectS<NoInfer<{
+            androidStudio: z<boolean, boolean, "plain">;
+            xcode: z<boolean, boolean, "plain">;
+            wechatDevtools: z<boolean, boolean, "plain">;
+            intellijIdea: z<boolean, boolean, "plain">;
+            devecoStudio: z<boolean, boolean, "plain">;
+            webstorm: z<boolean, boolean, "plain">;
+            pycharm: z<boolean, boolean, "plain">;
+            goland: z<boolean, boolean, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            androidStudio: z<boolean, boolean, "plain">;
+            xcode: z<boolean, boolean, "plain">;
+            wechatDevtools: z<boolean, boolean, "plain">;
+            intellijIdea: z<boolean, boolean, "plain">;
+            devecoStudio: z<boolean, boolean, "plain">;
+            webstorm: z<boolean, boolean, "plain">;
+            pycharm: z<boolean, boolean, "plain">;
+            goland: z<boolean, boolean, "plain">;
+        }>>, "plain">;
+    }>>>, NoInfer<Schemastery.ObjectT<NoInfer<{
+        banner: z<Schemastery.ObjectS<NoInfer<{
+            avatarPath: z<string, string, "plain">;
+            text: z<string, string, "plain">;
+            show: z<boolean, boolean, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            avatarPath: z<string, string, "plain">;
+            text: z<string, string, "plain">;
+            show: z<boolean, boolean, "plain">;
+        }>>, "plain">;
+        confetti: z<Schemastery.ObjectS<NoInfer<{
+            show: z<boolean, boolean, "plain">;
+            sound: z<boolean, boolean, "plain">;
+            theme: z<"gold" | "default" | "ocean" | "sakura" | "neon", "gold" | "default" | "ocean" | "sakura" | "neon", "plain">;
+            intensity: z<"small" | "medium" | "large" | "epic", "small" | "medium" | "large" | "epic", "plain">;
+            trigger: z<"every" | "success" | "task", "every" | "success" | "task", "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            show: z<boolean, boolean, "plain">;
+            sound: z<boolean, boolean, "plain">;
+            theme: z<"gold" | "default" | "ocean" | "sakura" | "neon", "gold" | "default" | "ocean" | "sakura" | "neon", "plain">;
+            intensity: z<"small" | "medium" | "large" | "epic", "small" | "medium" | "large" | "epic", "plain">;
+            trigger: z<"every" | "success" | "task", "every" | "success" | "task", "plain">;
+        }>>, "plain">;
+        english: z<Schemastery.ObjectS<NoInfer<{
+            enabled: z<boolean, boolean, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            enabled: z<boolean, boolean, "plain">;
+        }>>, "plain">;
+        open: z<Schemastery.ObjectS<NoInfer<{
+            terminal: z<string, string, "plain">;
+            editor: z<string, string, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            terminal: z<string, string, "plain">;
+            editor: z<string, string, "plain">;
+        }>>, "plain">;
+        openExtra: z<Schemastery.ObjectS<NoInfer<{
+            androidStudio: z<boolean, boolean, "plain">;
+            xcode: z<boolean, boolean, "plain">;
+            wechatDevtools: z<boolean, boolean, "plain">;
+            intellijIdea: z<boolean, boolean, "plain">;
+            devecoStudio: z<boolean, boolean, "plain">;
+            webstorm: z<boolean, boolean, "plain">;
+            pycharm: z<boolean, boolean, "plain">;
+            goland: z<boolean, boolean, "plain">;
+        }>>, Schemastery.ObjectT<NoInfer<{
+            androidStudio: z<boolean, boolean, "plain">;
+            xcode: z<boolean, boolean, "plain">;
+            wechatDevtools: z<boolean, boolean, "plain">;
+            intellijIdea: z<boolean, boolean, "plain">;
+            devecoStudio: z<boolean, boolean, "plain">;
+            webstorm: z<boolean, boolean, "plain">;
+            pycharm: z<boolean, boolean, "plain">;
+            goland: z<boolean, boolean, "plain">;
+        }>>, "plain">;
+    }>>>, "volatile-defined">;
+    taskBoard: z<NoInfer<Schemastery.ObjectS<NoInfer<{
+        enabled: z<boolean, boolean, "plain">;
+        announceToAgent: z<boolean, boolean, "plain">;
+    }>>>, NoInfer<Schemastery.ObjectT<NoInfer<{
+        enabled: z<boolean, boolean, "plain">;
+        announceToAgent: z<boolean, boolean, "plain">;
+    }>>>, "volatile-defined">;
+}>>, "plain">;
+export type Config = ReturnType<typeof Config>;
+export declare function resolveWorkbenchSettings(config: Config): WorkbenchConfig;

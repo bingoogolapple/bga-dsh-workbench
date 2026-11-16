@@ -9,8 +9,8 @@ import type { TaskRecord } from './tasks.ts';
 export interface TaskStore {
     /** 读取全部任务（失败时返回空数组） */
     load(): TaskRecord[];
-    /** 整体写回任务列表 */
-    save(tasks: readonly TaskRecord[]): void;
+    /** 整体写回任务列表。显式返回 false 表示写入失败。 */
+    save(tasks: readonly TaskRecord[]): boolean | void;
     /** 清空全部任务 */
     clear(): void;
     /** 可选：订阅外部对存储的修改（外部改动时触发重载监听） */
